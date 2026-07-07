@@ -12,14 +12,18 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
       await navigator.clipboard.writeText(offer.affiliate_url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
-    } catch {}
+    } catch {
+      // Clipboard indisponível (permissão negada ou navegador sem suporte); ignora silenciosamente.
+    }
   };
 
   const share = async () => {
     if (navigator.share) {
       try {
         await navigator.share({ title: offer.title, url: offer.affiliate_url });
-      } catch {}
+      } catch {
+        // Compartilhamento cancelado pelo usuário ou indisponível; ignora silenciosamente.
+      }
     } else copy();
   };
 
