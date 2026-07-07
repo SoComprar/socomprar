@@ -2,13 +2,20 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ExternalLink, Share2, ArrowLeft, Store, Calendar, Tag } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { OfferCard } from "@/components/OfferCard";
-import { offers, formatPrice, discount } from "@/lib/offers";
+import { formatPrice, discount } from "@/lib/offers";
+import { fetchOfferBySlug, fetchOffers } from "@/lib/offers.service";
 
 export const Route = createFileRoute("/oferta/$slug")({
-  loader: ({ params }) => {
-    const offer = offers.find((o) => o.slug === params.slug);
+  loader: async ({ params }) => {
+    const offer = await fetchOfferBySlug(params.slug);
     if (!offer) throw notFound();
-    return { offer };
+
+    const allOffers = await fetchOffers();
+    const related = allOffers
+      .filter((o) => offer.category_id && o.category_id === offer.category_id && o.id !== offer.id)
+      .slice(0, 4);
+
+    return { offer, related };
   },
   head: ({ loaderData }) => {
     if (!loaderData)
@@ -20,7 +27,7 @@ export const Route = createFileRoute("/oferta/$slug")({
         { name: "description", content: offer.description },
         { property: "og:title", content: offer.title },
         { property: "og:description", content: offer.description },
-        { property: "og:image", content: offer.image },
+        { property: "og:image", content: offer.image_url },
         { property: "og:type", content: "product" },
         { property: "og:url", content: `/oferta/${offer.slug}` },
       ],
@@ -32,14 +39,14 @@ export const Route = createFileRoute("/oferta/$slug")({
             "@context": "https://schema.org",
             "@type": "Product",
             name: offer.title,
-            image: offer.image,
+            image: offer.image_url,
             description: offer.description,
             offers: {
               "@type": "Offer",
-              price: offer.price,
+              price: offer.current_price,
               priceCurrency: "BRL",
               availability: "https://schema.org/InStock",
-              url: offer.url,
+              url: offer.affiliate_url,
             },
           }),
         },
@@ -63,9 +70,8 @@ function OfferNotFound() {
 }
 
 function OfferPage() {
-  const { offer } = Route.useLoaderData();
-  const pct = discount(offer.price, offer.oldPrice);
-  const related = offers.filter((o) => o.category === offer.category && o.id !== offer.id).slice(0, 4);
+  const { offer, related } = Route.useLoaderData();
+  const pct = discount(offer.current_price, offer.old_price);
 
   return (
     <PageShell>
@@ -77,7 +83,7 @@ function OfferPage() {
         <div className="mt-6 grid gap-8 md:grid-cols-2">
           <div className="card-elevated overflow-hidden">
             <div className="relative aspect-square bg-secondary">
-              <img src={offer.image} alt={offer.title} className="h-full w-full object-cover" />
+              <img src={offer.image_url} alt={offer.title} className="h-full w-full object-cover" />
               <span className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-sm font-bold text-brand-foreground shadow-md">
                 -{pct}%
               </span>
@@ -87,21 +93,23 @@ function OfferPage() {
           <div>
             <div className="flex flex-wrap gap-2">
               <span className="chip"><Store className="h-3.5 w-3.5" /> {offer.marketplace}</span>
-              <span className="chip capitalize"><Tag className="h-3.5 w-3.5" /> {offer.category}</span>
-              <span className="chip"><Calendar className="h-3.5 w-3.5" /> {new Date(offer.publishedAt).toLocaleDateString("pt-BR")}</span>
+              {offer.category ? (
+                <span className="chip capitalize"><Tag className="h-3.5 w-3.5" /> {offer.category.name}</span>
+              ) : null}
+              <span className="chip"><Calendar className="h-3.5 w-3.5" /> {new Date(offer.created_at).toLocaleDateString("pt-BR")}</span>
             </div>
 
             <h1 className="mt-4 text-2xl font-extrabold text-primary sm:text-3xl">{offer.title}</h1>
 
             <div className="mt-6 rounded-2xl border border-border bg-card p-5">
-              <div className="text-sm text-muted-foreground line-through">{formatPrice(offer.oldPrice)}</div>
-              <div className="text-4xl font-black text-primary">{formatPrice(offer.price)}</div>
+              <div className="text-sm text-muted-foreground line-through">{formatPrice(offer.old_price)}</div>
+              <div className="text-4xl font-black text-primary">{formatPrice(offer.current_price)}</div>
               <div className="mt-1 text-sm font-semibold" style={{ color: "var(--brand)" }}>
-                Você economiza {formatPrice(offer.oldPrice - offer.price)} ({pct}%)
+                Você economiza {formatPrice(offer.old_price - offer.current_price)} ({pct}%)
               </div>
 
               <a
-                href={offer.url}
+                href={offer.affiliate_url}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="btn-brand mt-5 w-full !py-3.5 text-base"

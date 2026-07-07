@@ -3,9 +3,13 @@ import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { OfferCard } from "@/components/OfferCard";
-import { categories, offers } from "@/lib/offers";
+import { fetchCategories, fetchOffers } from "@/lib/offers.service";
 
 export const Route = createFileRoute("/ofertas")({
+  loader: async () => {
+    const [offers, categories] = await Promise.all([fetchOffers(), fetchCategories()]);
+    return { offers, categories };
+  },
   head: () => ({
     meta: [
       { title: "Ofertas — SóComprar" },
@@ -18,20 +22,21 @@ export const Route = createFileRoute("/ofertas")({
 });
 
 function OfertasPage() {
+  const { offers, categories } = Route.useLoaderData();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("todas");
 
   const filtered = useMemo(() => {
     return offers.filter((o) => {
-      const matchCat = cat === "todas" || o.category === cat;
+      const matchCat = cat === "todas" || o.category?.slug === cat;
       const matchQ =
         !q ||
         o.title.toLowerCase().includes(q.toLowerCase()) ||
         o.marketplace.toLowerCase().includes(q.toLowerCase()) ||
-        o.tags.some((t) => t.includes(q.toLowerCase()));
+        (o.tags ?? []).some((t) => t.toLowerCase().includes(q.toLowerCase()));
       return matchCat && matchQ;
     });
-  }, [q, cat]);
+  }, [offers, q, cat]);
 
   return (
     <PageShell>

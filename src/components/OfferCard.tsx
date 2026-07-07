@@ -1,15 +1,15 @@
 import { Link } from "@tanstack/react-router";
 import { Share2, Copy, ExternalLink, Check } from "lucide-react";
 import { useState } from "react";
-import { type Offer, formatPrice, discount } from "@/lib/offers";
+import { type OfferWithCategory, formatPrice, discount } from "@/lib/offers";
 
-export function OfferCard({ offer }: { offer: Offer }) {
+export function OfferCard({ offer }: { offer: OfferWithCategory }) {
   const [copied, setCopied] = useState(false);
-  const pct = discount(offer.price, offer.oldPrice);
+  const pct = discount(offer.current_price, offer.old_price);
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(offer.url);
+      await navigator.clipboard.writeText(offer.affiliate_url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {}
@@ -18,7 +18,7 @@ export function OfferCard({ offer }: { offer: Offer }) {
   const share = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: offer.title, url: offer.url });
+        await navigator.share({ title: offer.title, url: offer.affiliate_url });
       } catch {}
     } else copy();
   };
@@ -31,7 +31,7 @@ export function OfferCard({ offer }: { offer: Offer }) {
         className="relative block aspect-square overflow-hidden bg-secondary"
       >
         <img
-          src={offer.image}
+          src={offer.image_url}
           alt={offer.title}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -55,16 +55,16 @@ export function OfferCard({ offer }: { offer: Offer }) {
 
         <div>
           <div className="text-xs text-muted-foreground line-through">
-            {formatPrice(offer.oldPrice)}
+            {formatPrice(offer.old_price)}
           </div>
           <div className="text-xl font-extrabold text-primary">
-            {formatPrice(offer.price)}
+            {formatPrice(offer.current_price)}
           </div>
         </div>
 
         <div className="mt-auto flex items-center gap-2">
           <a
-            href={offer.url}
+            href={offer.affiliate_url}
             target="_blank"
             rel="noopener noreferrer sponsored"
             className="btn-brand flex-1 !py-2.5 text-sm"

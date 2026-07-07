@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { OfferCard } from "@/components/OfferCard";
-import { categories, offers } from "@/lib/offers";
+import { fetchCategories, fetchOffers } from "@/lib/offers.service";
 import heroImg from "@/assets/hero.jpg";
 
 const iconMap = {
@@ -30,6 +30,10 @@ const iconMap = {
 } as const;
 
 export const Route = createFileRoute("/")({
+  loader: async () => {
+    const [offers, categories] = await Promise.all([fetchOffers(), fetchCategories()]);
+    return { offers, categories };
+  },
   head: () => ({
     meta: [
       { title: "SóComprar — Ofertas todos os dias na Amazon, Magalu e Shopee" },
@@ -46,7 +50,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const featured = offers.slice(0, 8);
+  const { offers, categories } = Route.useLoaderData();
+  // Prioriza ofertas marcadas como "destaque"; se não houver nenhuma ainda, mostra as mais recentes.
+  const featuredOffers = offers.filter((o) => o.featured);
+  const featured = (featuredOffers.length > 0 ? featuredOffers : offers).slice(0, 8);
   return (
     <PageShell>
       <section className="relative overflow-hidden">
@@ -133,7 +140,7 @@ function Index() {
 
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7">
           {categories.map((c) => {
-            const Icon = iconMap[c.icon as keyof typeof iconMap];
+            const Icon = c.icon ? iconMap[c.icon as keyof typeof iconMap] : undefined;
             return (
               <Link
                 key={c.slug}
@@ -141,7 +148,7 @@ function Index() {
                 className="card-elevated group flex flex-col items-center gap-2 px-2 py-4 text-center"
               >
                 <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft transition-colors">
-                  <Icon className="h-5 w-5" style={{ color: "var(--brand)" }} />
+                  {Icon ? <Icon className="h-5 w-5" style={{ color: "var(--brand)" }} /> : null}
                 </div>
                 <span className="text-xs font-semibold text-foreground">{c.name}</span>
               </Link>
