@@ -1,15 +1,27 @@
 -- Migration: cria a tabela categories e alinha a tabela offers
 -- Rode este arquivo no SQL Editor do Supabase (Dashboard > SQL Editor > New query)
 
--- 1) Tabela de categorias
+-- 1) Tabela de categorias (cria do zero, se ainda não existir)
 create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  slug text not null unique,
+  slug text not null,
   icon text,
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+-- 1.1) Se a tabela "categories" já existia (criada antes, com colunas diferentes),
+--      adiciona só o que estiver faltando. Não apaga nem altera nada que já existe.
+alter table public.categories
+  add column if not exists name text,
+  add column if not exists slug text,
+  add column if not exists icon text,
+  add column if not exists active boolean not null default true,
+  add column if not exists created_at timestamptz not null default now();
+
+-- 1.2) Garante slug único, mesmo que a tabela já existisse sem essa regra
+create unique index if not exists categories_slug_key on public.categories (slug);
 
 -- 2) Seed das categorias que já existiam no front-end (idempotente)
 insert into public.categories (name, slug, icon) values
