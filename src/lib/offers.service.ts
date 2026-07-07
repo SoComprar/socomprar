@@ -1,86 +1,65 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
-import type { Marketplace } from "./offers";
+import type { Category, OfferWithCategory } from "./offers";
 
-export type CreateOfferInput = {
-  title: string;
-  description: string;
-  price: number;
-  oldPrice: number;
-  image: string;
-  marketplace: Marketplace;
-  category: string;
-  url: string;
-  active: boolean;
-  featured: boolean;
-};
+// Select com o join embutido de categoria (PostgREST embedded resource).
+const OFFER_SELECT =
+  "id,slug,title,description,image_url,current_price,old_price,marketplace,category_id,affiliate_url,active,featured,tags,created_at,category:categories(id,name,slug,icon,active)";
 
-export type OfferRow = {
-  id: string;
-  title: string;
-  marketplace: Marketplace;
-  category: string;
-  price: number;
-  old_price: number;
-  affiliate_url: string;
-  active: boolean;
-  featured: boolean;
-  created_at: string | null;
-};
-
-export async function createOffer(offer: CreateOfferInput) {
+function ensureSupabase() {
   if (!isSupabaseConfigured || !supabase) {
     throw new Error("Supabase não está configurado. Verifique as variáveis de ambiente.");
   }
-
-  const { error } = await supabase.from("offers").insert([
-    {
-      title: offer.title,
-      description: offer.description,
-      price: offer.price,
-      old_price: offer.oldPrice,
-      image: offer.image,
-      marketplace: offer.marketplace,
-      category: offer.category,
-      affiliate_url: offer.url,
-      active: offer.active,
-      featured: offer.featured,
-    },
-  ]);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return true;
+  return supabase;
 }
 
-export async function fetchOffers() {
-  if (!isSupabaseConfigured || !supabase) {
-    throw new Error("Supabase não está configurado. Verifique as variáveis de ambiente.");
-  }
+// Todas as ofertas ATIVAS, para uso no site público (home, /ofertas, sitemap).
+export async function fetchOffers(): Promise<OfferWithCategory[]> {
+  const client = ensureSupabase();
 
-  const { data, error } = await supabase
-    .from<OfferRow>("offers")
-    .select("id,title,marketplace,category,price,old_price,affiliate_url,active,featured,created_at")
+  const { data, error } = await client
+    .from("offers")
+    .select(OFFER_SELECT)
+    .eq("active", true)
     .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return data ?? [];
+  return (data ?? []) as unknown as OfferWithCategory[];
 }
 
-export async function deleteOffer(id: string) {
-  if (!isSupabaseConfigured || !supabase) {
-    throw new Error("Supabase não está configurado. Verifique as variáveis de ambiente.");
-  }
+// Uma oferta específica pelo slug, para a página /oferta/$slug.
+export async function fetchOfferBySlug(slug: string): Promise<OfferWithCategory | null> {
+  const client = ensureSupabase();
 
-  const { error } = await supabase.from("offers").delete().eq("id", id);
+  const { data, error } = await client
+    .from("offers")
+    .select(OFFER_SELECT)
+    .eq("slug", slug)
+    .eq("active", true)
+    .maybeSingle();
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return true;
+  return (data as unknown as OfferWithCategory) ?? null;
+}
+
+// Categorias ativas, usadas tanto no site público quanto no formulário do painel admin.
+export async function fetchCategories(): Promise<Category[]> {
+  const client = ensureSupabase();
+
+  const { data, error } = await client
+    .from("categories")
+    .select("id,name,slug,icon,active")
+    .eq("active", true)
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
 }
