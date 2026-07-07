@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -7,30 +8,47 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { categories, type Marketplace } from "@/lib/offers";
-import { createOffer, type CreateOfferInput } from "@/lib/offers.service";
+import { CurrencyInput } from "./CurrencyInput";
+import type { Marketplace } from "@/lib/offers";
+import { fetchCategories } from "@/lib/offers.service";
+import { createOffer } from "@/lib/offers.admin.service";
 import { useState } from "react";
 import { z } from "zod";
 
-const offerSchema = z.object({
-  title: z.string().min(1, "Título é obrigatório."),
-  description: z.string().min(1, "Descrição é obrigatória."),
-  price: z.number().positive("Preço atual deve ser maior que zero."),
-  oldPrice: z.number().positive("Preço antigo deve ser maior que zero."),
-  image: z.string().url("Informe uma URL válida para a imagem."),
-  marketplace: z.enum(["Amazon", "Mercado Livre", "Magalu", "Shopee", "AliExpress"]),
-  category: z.string().min(1, "Categoria é obrigatória."),
-  url: z.string().url("Informe um link afiliado válido."),
-  active: z.boolean(),
-  featured: z.boolean(),
-}).refine((data) => data.oldPrice >= data.price, {
-  message: "O preço antigo deve ser maior ou igual ao preço atual.",
-  path: ["oldPrice"],
-});
+const offerSchema = z
+  .object({
+    title: z.string().min(1, "Título é obrigatório."),
+    description: z.string().min(1, "Descrição é obrigatória."),
+    currentPrice: z.number().positive("Preço atual deve ser maior que zero."),
+    oldPrice: z.number().positive("Preço antigo deve ser maior que zero."),
+    imageUrl: z.string().url("Informe uma URL válida para a imagem."),
+    marketplace: z.enum(["Amazon", "Mercado Livre", "Magalu", "Shopee", "AliExpress"]),
+    categoryId: z.string().min(1, "Categoria é obrigatória."),
+    affiliateUrl: z.string().url("Informe um link afiliado válido."),
+    active: z.boolean(),
+    featured: z.boolean(),
+  })
+  .refine((data) => data.oldPrice >= data.currentPrice, {
+    message: "O preço antigo deve ser maior ou igual ao preço atual.",
+    path: ["oldPrice"],
+  });
 
 type OfferFormValues = z.infer<typeof offerSchema>;
 
 const marketplaceOptions: Marketplace[] = ["Amazon", "Mercado Livre", "Magalu", "Shopee", "AliExpress"];
+
+const emptyValues: OfferFormValues = {
+  title: "",
+  description: "",
+  currentPrice: 0,
+  oldPrice: 0,
+  imageUrl: "",
+  marketplace: "Amazon",
+  categoryId: "",
+  affiliateUrl: "",
+  active: true,
+  featured: false,
+};
 
 type OfferFormProps = {
   onSuccess?: () => void;
@@ -39,53 +57,35 @@ type OfferFormProps = {
 export function OfferForm({ onSuccess }: OfferFormProps) {
   const [status, setStatus] = useState<null | { type: "success" | "error"; message: string }>(null);
 
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: fetchCategories,
+    staleTime: 1000 * 60 * 5,
+  });
+
   const form = useForm<OfferFormValues>({
     resolver: zodResolver(offerSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      price: 0,
-      oldPrice: 0,
-      image: "",
-      marketplace: "Amazon",
-      category: categories[0]?.slug ?? "",
-      url: "",
-      active: true,
-      featured: false,
-    },
+    defaultValues: emptyValues,
   });
 
   const onSubmit = async (values: OfferFormValues) => {
     setStatus(null);
 
-    const payload: CreateOfferInput = {
-      title: values.title,
-      description: values.description,
-      price: values.price,
-      oldPrice: values.oldPrice,
-      image: values.image,
-      marketplace: values.marketplace,
-      category: values.category,
-      url: values.url,
-      active: values.active,
-      featured: values.featured,
-    };
-
     try {
-      await createOffer(payload);
-      setStatus({ type: "success", message: "Oferta cadastrada com sucesso." });
-      form.reset({
-        title: "",
-        description: "",
-        price: 0,
-        oldPrice: 0,
-        image: "",
-        marketplace: "Amazon",
-        category: categories[0]?.slug ?? "",
-        url: "",
-        active: true,
-        featured: false,
+      await createOffer({
+        title: values.title,
+        description: values.description,
+        currentPrice: values.currentPrice,
+        oldPrice: values.oldPrice,
+        imageUrl: values.imageUrl,
+        marketplace: values.marketplace,
+        categoryId: values.categoryId,
+        affiliateUrl: values.affiliateUrl,
+        active: values.active,
+        featured: values.featured,
       });
+      setStatus({ type: "success", message: "Oferta cadastrada com sucesso." });
+      form.reset(emptyValues);
       onSuccess?.();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao cadastrar oferta.";
@@ -102,6 +102,15 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
         </Alert>
       ) : null}
 
+      {categoriesQuery.isError ? (
+        <Alert variant="destructive">
+          <AlertTitle>Erro ao carregar categorias</AlertTitle>
+          <AlertDescription>
+            {categoriesQuery.error instanceof Error ? categoriesQuery.error.message : "Erro desconhecido."}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
         <div className="grid gap-6 md:grid-cols-2">
           <div className="grid gap-2">
@@ -113,25 +122,42 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="image">Imagem (URL)</Label>
-            <Input id="image" {...form.register("image")} />
-            {form.formState.errors.image ? (
-              <p className="text-sm text-destructive">{form.formState.errors.image.message}</p>
+            <Label htmlFor="imageUrl">Imagem (URL)</Label>
+            <Input id="imageUrl" {...form.register("imageUrl")} />
+            {form.formState.errors.imageUrl ? (
+              <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>
             ) : null}
           </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           <div className="grid gap-2">
-            <Label htmlFor="price">Preço Atual</Label>
-            <Input id="price" type="number" step="0.01" {...form.register("price", { valueAsNumber: true })} />
-            {form.formState.errors.price ? (
-              <p className="text-sm text-destructive">{form.formState.errors.price.message}</p>
+            <Label htmlFor="currentPrice">Preço Atual</Label>
+            <Controller
+              control={form.control}
+              name="currentPrice"
+              render={({ field }) => (
+                <CurrencyInput
+                  id="currentPrice"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                />
+              )}
+            />
+            {form.formState.errors.currentPrice ? (
+              <p className="text-sm text-destructive">{form.formState.errors.currentPrice.message}</p>
             ) : null}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="oldPrice">Preço Antigo</Label>
-            <Input id="oldPrice" type="number" step="0.01" {...form.register("oldPrice", { valueAsNumber: true })} />
+            <Controller
+              control={form.control}
+              name="oldPrice"
+              render={({ field }) => (
+                <CurrencyInput id="oldPrice" value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
+              )}
+            />
             {form.formState.errors.oldPrice ? (
               <p className="text-sm text-destructive">{form.formState.errors.oldPrice.message}</p>
             ) : null}
@@ -165,18 +191,20 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="category">Categoria</Label>
+            <Label htmlFor="categoryId">Categoria</Label>
             <Controller
               control={form.control}
-              name="category"
+              name="categoryId"
               render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={categoriesQuery.isPending}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
+                    <SelectValue
+                      placeholder={categoriesQuery.isPending ? "Carregando categorias..." : "Selecione uma categoria"}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.slug} value={category.slug}>
+                    {(categoriesQuery.data ?? []).map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
                         {category.name}
                       </SelectItem>
                     ))}
@@ -184,17 +212,17 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
                 </Select>
               )}
             />
-            {form.formState.errors.category ? (
-              <p className="text-sm text-destructive">{form.formState.errors.category.message}</p>
+            {form.formState.errors.categoryId ? (
+              <p className="text-sm text-destructive">{form.formState.errors.categoryId.message}</p>
             ) : null}
           </div>
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="url">Link Afiliado</Label>
-          <Input id="url" {...form.register("url")} />
-          {form.formState.errors.url ? (
-            <p className="text-sm text-destructive">{form.formState.errors.url.message}</p>
+          <Label htmlFor="affiliateUrl">Link Afiliado</Label>
+          <Input id="affiliateUrl" {...form.register("affiliateUrl")} />
+          {form.formState.errors.affiliateUrl ? (
+            <p className="text-sm text-destructive">{form.formState.errors.affiliateUrl.message}</p>
           ) : null}
         </div>
 
@@ -234,7 +262,9 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
           <p className="text-sm text-muted-foreground">
             Os dados serão enviados diretamente para a tabela <span className="font-semibold">offers</span>.
           </p>
-          <Button type="submit">Salvar oferta</Button>
+          <Button type="submit" disabled={form.formState.isSubmitting}>
+            Salvar oferta
+          </Button>
         </div>
       </form>
     </div>

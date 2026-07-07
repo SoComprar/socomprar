@@ -4,24 +4,25 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { formatPrice } from "@/lib/offers";
 import { OfferForm } from "./OfferForm";
-import { deleteOffer, fetchOffers, type OfferRow } from "@/lib/offers.service";
+import { deleteOffer, fetchOffersForAdmin } from "@/lib/offers.admin.service";
 
 export function AdminDashboard() {
   const queryClient = useQueryClient();
-  const offersQuery = useQuery<OfferRow[]>({
+  const offersQuery = useQuery({
     queryKey: ["adminOffers"],
-    queryFn: fetchOffers,
+    queryFn: fetchOffersForAdmin,
     staleTime: 1000 * 60,
     enabled: isSupabaseConfigured,
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteOffer,
-    onSuccess: () => queryClient.invalidateQueries(["adminOffers"]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["adminOffers"] }),
   });
 
-  const handleOfferCreated = () => queryClient.invalidateQueries(["adminOffers"]);
+  const handleOfferCreated = () => queryClient.invalidateQueries({ queryKey: ["adminOffers"] });
 
   const handleDelete = (id: string) => {
     const confirmation = window.confirm("Tem certeza de que deseja apagar esta oferta?");
@@ -123,7 +124,7 @@ export function AdminDashboard() {
               Apague registros diretamente da tabela de ofertas.
             </p>
           </div>
-          <Button variant="outline" onClick={() => queryClient.invalidateQueries(["adminOffers"])}>
+          <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["adminOffers"] })}>
             Atualizar lista
           </Button>
         </div>
@@ -156,7 +157,7 @@ export function AdminDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {offersQuery.isLoading ? (
+              {offersQuery.isPending ? (
                 <TableRow>
                   <TableCell colSpan={7} className="p-6 text-center text-sm text-muted-foreground">
                     Carregando ofertas...
@@ -167,8 +168,8 @@ export function AdminDashboard() {
                   <TableRow key={offer.id}>
                     <TableCell>{offer.title}</TableCell>
                     <TableCell>{offer.marketplace}</TableCell>
-                    <TableCell>{offer.category}</TableCell>
-                    <TableCell>{offer.price.toFixed(2)}</TableCell>
+                    <TableCell>{offer.category?.name ?? "—"}</TableCell>
+                    <TableCell>{formatPrice(offer.current_price)}</TableCell>
                     <TableCell>{offer.active ? "Sim" : "Não"}</TableCell>
                     <TableCell>{offer.featured ? "Sim" : "Não"}</TableCell>
                     <TableCell className="text-right">
@@ -176,7 +177,7 @@ export function AdminDashboard() {
                         variant="destructive"
                         size="sm"
                         onClick={() => handleDelete(offer.id)}
-                        disabled={deleteMutation.isLoading}
+                        disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
