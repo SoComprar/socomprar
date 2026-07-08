@@ -1,15 +1,17 @@
 import { Link } from "@tanstack/react-router";
-import { Share2, Copy, ExternalLink, Check } from "lucide-react";
+import { Share2, Copy, ArrowRight, Check } from "lucide-react";
 import { useState } from "react";
 import { type OfferWithCategory, formatPrice, discount } from "@/lib/offers";
+import { getAbsoluteUrl } from "@/lib/site";
 
 export function OfferCard({ offer }: { offer: OfferWithCategory }) {
   const [copied, setCopied] = useState(false);
   const pct = discount(offer.current_price, offer.old_price);
+  const offerUrl = getAbsoluteUrl(`/oferta/${offer.slug}`);
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(offer.affiliate_url);
+      await navigator.clipboard.writeText(offerUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {
@@ -20,7 +22,7 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
   const share = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: offer.title, url: offer.affiliate_url });
+        await navigator.share({ title: offer.title, url: offerUrl });
       } catch {
         // Compartilhamento cancelado pelo usuário ou indisponível; ignora silenciosamente.
       }
@@ -67,14 +69,13 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
         </div>
 
         <div className="mt-auto flex items-center gap-2">
-          <a
-            href={offer.affiliate_url}
-            target="_blank"
-            rel="noopener noreferrer sponsored"
+          <Link
+            to="/oferta/$slug"
+            params={{ slug: offer.slug }}
             className="btn-brand flex-1 !py-2.5 text-sm"
           >
-            Comprar <ExternalLink className="h-3.5 w-3.5" />
-          </a>
+            Comprar <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
           <button
             onClick={share}
             aria-label="Compartilhar"
