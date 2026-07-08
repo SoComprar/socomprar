@@ -1,11 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { z } from "zod";
 import { PageShell } from "@/components/PageShell";
 import { OfferCard } from "@/components/OfferCard";
 import { fetchCategories, fetchOffers } from "@/lib/offers.service";
 
+const ofertasSearchSchema = z.object({
+  categoria: z.string().optional(),
+});
+
 export const Route = createFileRoute("/ofertas")({
+  validateSearch: ofertasSearchSchema,
   loader: async () => {
     const [offers, categories] = await Promise.all([fetchOffers(), fetchCategories()]);
     return { offers, categories };
@@ -23,8 +29,17 @@ export const Route = createFileRoute("/ofertas")({
 
 function OfertasPage() {
   const { offers, categories } = Route.useLoaderData();
+  const { categoria } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [q, setQ] = useState("");
-  const [cat, setCat] = useState<string>("todas");
+  const cat = categoria ?? "todas";
+
+  const setCat = (slug: string) => {
+    navigate({
+      search: (prev) => ({ ...prev, categoria: slug === "todas" ? undefined : slug }),
+      replace: true,
+    });
+  };
 
   const filtered = useMemo(() => {
     return offers.filter((o) => {

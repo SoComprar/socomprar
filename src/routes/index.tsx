@@ -22,6 +22,7 @@ import {
 import { PageShell } from "@/components/PageShell";
 import { OfferCard } from "@/components/OfferCard";
 import { fetchCategories, fetchOffers } from "@/lib/offers.service";
+import { WHATSAPP_CONTACT_LINK } from "@/lib/site";
 import heroImg from "@/assets/hero.jpg";
 
 const iconMap = {
@@ -85,14 +86,16 @@ function Index() {
               <Link to="/ofertas" className="btn-brand">
                 Ver Ofertas <ArrowRight className="h-4 w-4" />
               </Link>
-              <a
-                href="https://wa.me/"
-                target="_blank"
-                rel="noreferrer"
-                className="btn-outline-brand"
-              >
-                <MessageCircle className="h-4 w-4" /> Entrar no WhatsApp
-              </a>
+              {WHATSAPP_CONTACT_LINK ? (
+                <a
+                  href={WHATSAPP_CONTACT_LINK}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-outline-brand"
+                >
+                  <MessageCircle className="h-4 w-4" /> Entrar no WhatsApp
+                </a>
+              ) : null}
             </div>
 
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
@@ -145,6 +148,7 @@ function Index() {
               <Link
                 key={c.slug}
                 to="/ofertas"
+                search={{ categoria: c.slug }}
                 className="card-elevated group flex flex-col items-center gap-2 px-2 py-4 text-center"
               >
                 <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft transition-colors">
@@ -177,20 +181,22 @@ function Index() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pb-20">
-        <div className="relative overflow-hidden rounded-3xl bg-primary p-8 text-center sm:p-14">
-          <div aria-hidden className="absolute -right-16 -top-16 h-64 w-64 rounded-full opacity-30 blur-2xl" style={{ background: "var(--brand)" }} />
-          <h3 className="text-2xl font-extrabold text-primary-foreground sm:text-3xl">
-            Receba as melhores ofertas primeiro
-          </h3>
-          <p className="mx-auto mt-3 max-w-xl text-sm text-primary-foreground/80">
-            Entre no nosso grupo do WhatsApp e receba promoções selecionadas todos os dias.
-          </p>
-          <a href="https://wa.me/" target="_blank" rel="noreferrer" className="btn-brand mt-6 inline-flex">
-            <MessageCircle className="h-4 w-4" /> Entrar no grupo
-          </a>
-        </div>
-      </section>
+      {WHATSAPP_CONTACT_LINK ? (
+        <section className="mx-auto max-w-6xl px-4 pb-20">
+          <div className="relative overflow-hidden rounded-3xl bg-primary p-8 text-center sm:p-14">
+            <div aria-hidden className="absolute -right-16 -top-16 h-64 w-64 rounded-full opacity-30 blur-2xl" style={{ background: "var(--brand)" }} />
+            <h3 className="text-2xl font-extrabold text-primary-foreground sm:text-3xl">
+              Receba as melhores ofertas primeiro
+            </h3>
+            <p className="mx-auto mt-3 max-w-xl text-sm text-primary-foreground/80">
+              Entre no nosso grupo do WhatsApp e receba promoções selecionadas todos os dias.
+            </p>
+            <a href={WHATSAPP_CONTACT_LINK} target="_blank" rel="noreferrer" className="btn-brand mt-6 inline-flex">
+              <MessageCircle className="h-4 w-4" /> Entrar no grupo
+            </a>
+          </div>
+        </section>
+      ) : null}
     </PageShell>
   );
 }

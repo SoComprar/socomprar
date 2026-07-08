@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Instagram, MessageCircle, Mail } from "lucide-react";
 import { Logo } from "./Logo";
+import { INSTAGRAM_URL, WHATSAPP_CONTACT_LINK } from "@/lib/site";
 
 export function Footer() {
   return (
@@ -13,12 +14,16 @@ export function Footer() {
             Brasil para você economizar tempo e dinheiro.
           </p>
           <div className="mt-5 flex gap-2">
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className="grid h-10 w-10 place-items-center rounded-full border border-border bg-background text-muted-foreground hover:text-primary">
-              <Instagram className="h-4 w-4" />
-            </a>
-            <a href="https://wa.me/" target="_blank" rel="noreferrer" aria-label="WhatsApp" className="grid h-10 w-10 place-items-center rounded-full border border-border bg-background text-muted-foreground hover:text-primary">
-              <MessageCircle className="h-4 w-4" />
-            </a>
+            {INSTAGRAM_URL ? (
+              <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" aria-label="Instagram" className="grid h-10 w-10 place-items-center rounded-full border border-border bg-background text-muted-foreground hover:text-primary">
+                <Instagram className="h-4 w-4" />
+              </a>
+            ) : null}
+            {WHATSAPP_CONTACT_LINK ? (
+              <a href={WHATSAPP_CONTACT_LINK} target="_blank" rel="noreferrer" aria-label="WhatsApp" className="grid h-10 w-10 place-items-center rounded-full border border-border bg-background text-muted-foreground hover:text-primary">
+                <MessageCircle className="h-4 w-4" />
+              </a>
+            ) : null}
             <Link to="/contato" aria-label="Contato" className="grid h-10 w-10 place-items-center rounded-full border border-border bg-background text-muted-foreground hover:text-primary">
               <Mail className="h-4 w-4" />
             </Link>

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Instagram, MessageCircle, Search, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Logo } from "./Logo";
+import { INSTAGRAM_URL, WHATSAPP_CONTACT_LINK } from "@/lib/site";
 
 const nav = [
   { to: "/", label: "Início" },
@@ -41,24 +42,28 @@ export function Header() {
           >
             <Search className="h-4 w-4" />
           </Link>
-          <a
-            href="https://instagram.com"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Instagram"
-            className="hidden h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary sm:grid"
-          >
-            <Instagram className="h-4 w-4" />
-          </a>
-          <a
-            href="https://wa.me/"
-            target="_blank"
-            rel="noreferrer"
-            className="btn-brand !px-4 !py-2 text-sm"
-          >
-            <MessageCircle className="h-4 w-4" />
-            <span className="hidden sm:inline">WhatsApp</span>
-          </a>
+          {INSTAGRAM_URL ? (
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Instagram"
+              className="hidden h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary sm:grid"
+            >
+              <Instagram className="h-4 w-4" />
+            </a>
+          ) : null}
+          {WHATSAPP_CONTACT_LINK ? (
+            <a
+              href={WHATSAPP_CONTACT_LINK}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-brand !px-4 !py-2 text-sm"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">WhatsApp</span>
+            </a>
+          ) : null}
           <button
             onClick={() => setOpen((v) => !v)}
             className="ml-1 grid h-10 w-10 place-items-center rounded-full border border-border md:hidden"
