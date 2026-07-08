@@ -12,6 +12,7 @@ import { CurrencyInput } from "./CurrencyInput";
 import type { Marketplace } from "@/lib/offers";
 import { fetchCategories } from "@/lib/offers.service";
 import { createOffer } from "@/lib/offers.admin.service";
+import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 
@@ -54,8 +55,26 @@ type OfferFormProps = {
   onSuccess?: () => void;
 };
 
+type ImportOfferResponse =
+  | {
+      ok: true;
+      data: {
+        title: string | null;
+        description: string | null;
+        imageUrl: string | null;
+        currentPrice: number | null;
+        oldPrice: number | null;
+        marketplace: string | null;
+        slug: string | null;
+      };
+    }
+  | { ok: false; error: string };
+
 export function OfferForm({ onSuccess }: OfferFormProps) {
   const [status, setStatus] = useState<null | { type: "success" | "error"; message: string }>(null);
+  const [importUrl, setImportUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState<null | { type: "success" | "error"; message: string }>(null);
 
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
@@ -67,6 +86,48 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
     resolver: zodResolver(offerSchema),
     defaultValues: emptyValues,
   });
+
+  const handleImport = async () => {
+    if (!importUrl.trim()) return;
+    setImporting(true);
+    setImportMessage(null);
+
+    try {
+      const response = await fetch("/api/import-offer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: importUrl.trim() }),
+      });
+      const result = (await response.json()) as ImportOfferResponse;
+
+      if (!result.ok) {
+        setImportMessage({ type: "error", message: result.error });
+        return;
+      }
+
+      const { data } = result;
+      if (data.title) form.setValue("title", data.title, { shouldValidate: true });
+      if (data.description) form.setValue("description", data.description, { shouldValidate: true });
+      if (data.imageUrl) form.setValue("imageUrl", data.imageUrl, { shouldValidate: true });
+      if (data.currentPrice) form.setValue("currentPrice", data.currentPrice, { shouldValidate: true });
+      if (data.oldPrice) form.setValue("oldPrice", data.oldPrice, { shouldValidate: true });
+      if (data.marketplace && marketplaceOptions.includes(data.marketplace as Marketplace)) {
+        form.setValue("marketplace", data.marketplace as Marketplace, { shouldValidate: true });
+      }
+
+      const filledCount = [data.title, data.description, data.imageUrl, data.currentPrice, data.marketplace].filter(
+        Boolean,
+      ).length;
+      setImportMessage({
+        type: "success",
+        message: `Importamos ${filledCount} campo(s) automaticamente. Confira e complete o que faltar (categoria, link afiliado e, se necessário, os preços) antes de salvar.`,
+      });
+    } catch {
+      setImportMessage({ type: "error", message: "Falha ao importar. Preencha manualmente abaixo." });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const onSubmit = async (values: OfferFormValues) => {
     setStatus(null);
@@ -110,6 +171,34 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
           </AlertDescription>
         </Alert>
       ) : null}
+
+      <div className="rounded-2xl border border-dashed border-border bg-secondary/40 p-5">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4" style={{ color: "var(--brand)" }} />
+          <h3 className="text-sm font-semibold text-primary">Importar oferta (BETA)</h3>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Cole a URL do produto para tentar preencher automaticamente. Todos os campos continuam editáveis, e se a
+          importação falhar você pode preencher manualmente abaixo.
+        </p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={importUrl}
+            onChange={(e) => setImportUrl(e.target.value)}
+            placeholder="Cole a URL do produto"
+            className="flex-1"
+          />
+          <Button type="button" variant="outline" onClick={handleImport} disabled={importing || !importUrl.trim()}>
+            {importing ? "Importando..." : "Importar automaticamente"}
+          </Button>
+        </div>
+        {importMessage ? (
+          <Alert variant={importMessage.type === "success" ? "default" : "destructive"} className="mt-3">
+            <AlertTitle>{importMessage.type === "success" ? "Importado" : "Não foi possível importar"}</AlertTitle>
+            <AlertDescription>{importMessage.message}</AlertDescription>
+          </Alert>
+        ) : null}
+      </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
         <div className="grid gap-6 md:grid-cols-2">

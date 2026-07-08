@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as OfertasRouteImport } from './routes/ofertas'
 import { Route as ContatoRouteImport } from './routes/contato'
@@ -19,6 +20,7 @@ import { Route as AfiliadosRouteImport } from './routes/afiliados'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OfertaSlugRouteImport } from './routes/oferta.$slug'
+import { Route as ApiImportOfferRouteImport } from './routes/api.import-offer'
 
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
@@ -33,6 +35,11 @@ const SobreRoute = SobreRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
@@ -70,6 +77,11 @@ const OfertaSlugRoute = OfertaSlugRouteImport.update({
   path: '/oferta/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiImportOfferRoute = ApiImportOfferRouteImport.update({
+  id: '/api/import-offer',
+  path: '/api/import-offer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -78,9 +90,11 @@ export interface FileRoutesByFullPath {
   '/contato': typeof ContatoRoute
   '/ofertas': typeof OfertasRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
+  '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
 }
 export interface FileRoutesByTo {
@@ -90,9 +104,11 @@ export interface FileRoutesByTo {
   '/contato': typeof ContatoRoute
   '/ofertas': typeof OfertasRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
+  '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
 }
 export interface FileRoutesById {
@@ -103,9 +119,11 @@ export interface FileRoutesById {
   '/contato': typeof ContatoRoute
   '/ofertas': typeof OfertasRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
+  '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
 }
 export interface FileRouteTypes {
@@ -117,9 +135,11 @@ export interface FileRouteTypes {
     | '/contato'
     | '/ofertas'
     | '/privacidade'
+    | '/robots.txt'
     | '/sitemap.xml'
     | '/sobre'
     | '/termos'
+    | '/api/import-offer'
     | '/oferta/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -129,9 +149,11 @@ export interface FileRouteTypes {
     | '/contato'
     | '/ofertas'
     | '/privacidade'
+    | '/robots.txt'
     | '/sitemap.xml'
     | '/sobre'
     | '/termos'
+    | '/api/import-offer'
     | '/oferta/$slug'
   id:
     | '__root__'
@@ -141,9 +163,11 @@ export interface FileRouteTypes {
     | '/contato'
     | '/ofertas'
     | '/privacidade'
+    | '/robots.txt'
     | '/sitemap.xml'
     | '/sobre'
     | '/termos'
+    | '/api/import-offer'
     | '/oferta/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -154,9 +178,11 @@ export interface RootRouteChildren {
   ContatoRoute: typeof ContatoRoute
   OfertasRoute: typeof OfertasRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SobreRoute: typeof SobreRoute
   TermosRoute: typeof TermosRoute
+  ApiImportOfferRoute: typeof ApiImportOfferRoute
   OfertaSlugRoute: typeof OfertaSlugRoute
 }
 
@@ -181,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacidade': {
@@ -232,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OfertaSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/import-offer': {
+      id: '/api/import-offer'
+      path: '/api/import-offer'
+      fullPath: '/api/import-offer'
+      preLoaderRoute: typeof ApiImportOfferRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -242,9 +282,11 @@ const rootRouteChildren: RootRouteChildren = {
   ContatoRoute: ContatoRoute,
   OfertasRoute: OfertasRoute,
   PrivacidadeRoute: PrivacidadeRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SobreRoute: SobreRoute,
   TermosRoute: TermosRoute,
+  ApiImportOfferRoute: ApiImportOfferRoute,
   OfertaSlugRoute: OfertaSlugRoute,
 }
 export const routeTree = rootRouteImport
