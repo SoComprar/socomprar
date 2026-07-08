@@ -5,6 +5,7 @@ import { z } from "zod";
 import { PageShell } from "@/components/PageShell";
 import { OfferCard } from "@/components/OfferCard";
 import { fetchCategories, fetchOffers } from "@/lib/offers.service";
+import { getAbsoluteUrl } from "@/lib/site";
 
 const ofertasSearchSchema = z.object({
   categoria: z.string().optional(),
@@ -20,9 +21,9 @@ export const Route = createFileRoute("/ofertas")({
     meta: [
       { title: "Ofertas — SóComprar" },
       { name: "description", content: "Todas as ofertas selecionadas hoje pelos marketplaces parceiros." },
-      { property: "og:url", content: "/ofertas" },
+      { property: "og:url", content: getAbsoluteUrl("/ofertas") },
     ],
-    links: [{ rel: "canonical", href: "/ofertas" }],
+    links: [{ rel: "canonical", href: getAbsoluteUrl("/ofertas") }],
   }),
   component: OfertasPage,
 });

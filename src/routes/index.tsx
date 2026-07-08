@@ -22,7 +22,7 @@ import {
 import { PageShell } from "@/components/PageShell";
 import { OfferCard } from "@/components/OfferCard";
 import { fetchCategories, fetchOffers } from "@/lib/offers.service";
-import { WHATSAPP_CONTACT_LINK } from "@/lib/site";
+import { WHATSAPP_CONTACT_LINK, getAbsoluteUrl } from "@/lib/site";
 import heroImg from "@/assets/hero.jpg";
 
 const iconMap = {
@@ -43,9 +43,9 @@ export const Route = createFileRoute("/")({
         content:
           "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza.",
       },
-      { property: "og:url", content: "/" },
+      { property: "og:url", content: getAbsoluteUrl("/") },
     ],
-    links: [{ rel: "canonical", href: "/" }],
+    links: [{ rel: "canonical", href: getAbsoluteUrl("/") }],
   }),
   component: Index,
 });

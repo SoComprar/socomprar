@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Article } from "@/components/Article";
+import { getAbsoluteUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/afiliados")({
   head: () => ({
     meta: [
       { title: "Divulgação de Afiliados — SóComprar" },
       { name: "description", content: "Transparência sobre nossos links de afiliados." },
-      { property: "og:url", content: "/afiliados" },
+      { property: "og:url", content: getAbsoluteUrl("/afiliados") },
     ],
-    links: [{ rel: "canonical", href: "/afiliados" }],
+    links: [{ rel: "canonical", href: getAbsoluteUrl("/afiliados") }],
   }),
   component: () => (
     <Article title="Divulgação de Afiliados">

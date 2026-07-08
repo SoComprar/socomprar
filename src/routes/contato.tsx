@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Instagram, MessageCircle, Mail } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { INSTAGRAM_URL, WHATSAPP_CONTACT_LINK } from "@/lib/site";
+import { INSTAGRAM_URL, WHATSAPP_CONTACT_LINK, getAbsoluteUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/contato")({
   head: () => ({
     meta: [
       { title: "Contato — SóComprar" },
       { name: "description", content: "Fale com o time do SóComprar." },
-      { property: "og:url", content: "/contato" },
+      { property: "og:url", content: getAbsoluteUrl("/contato") },
     ],
-    links: [{ rel: "canonical", href: "/contato" }],
+    links: [{ rel: "canonical", href: getAbsoluteUrl("/contato") }],
   }),
   component: ContatoPage,
 });

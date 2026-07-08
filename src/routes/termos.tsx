@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Article } from "@/components/Article";
+import { getAbsoluteUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/termos")({
   head: () => ({
     meta: [
       { title: "Termos de Uso — SóComprar" },
       { name: "description", content: "Termos e condições de uso do site SóComprar." },
-      { property: "og:url", content: "/termos" },
+      { property: "og:url", content: getAbsoluteUrl("/termos") },
     ],
-    links: [{ rel: "canonical", href: "/termos" }],
+    links: [{ rel: "canonical", href: getAbsoluteUrl("/termos") }],
   }),
   component: () => (
     <Article title="Termos de Uso" description="Última atualização: julho de 2026">

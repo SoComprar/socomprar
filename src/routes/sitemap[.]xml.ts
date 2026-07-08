@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 import { fetchOffers } from "@/lib/offers.service";
-
-const BASE_URL = "";
+import { getSiteUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
+        const BASE_URL = getSiteUrl();
         const offers = await fetchOffers();
 
         const paths = [

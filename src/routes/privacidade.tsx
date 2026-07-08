@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Article } from "@/components/Article";
+import { getAbsoluteUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
     meta: [
       { title: "Política de Privacidade — SóComprar" },
       { name: "description", content: "Como coletamos, usamos e protegemos seus dados." },
-      { property: "og:url", content: "/privacidade" },
+      { property: "og:url", content: getAbsoluteUrl("/privacidade") },
     ],
-    links: [{ rel: "canonical", href: "/privacidade" }],
+    links: [{ rel: "canonical", href: getAbsoluteUrl("/privacidade") }],
   }),
   component: () => (
     <Article title="Política de Privacidade" description="Última atualização: julho de 2026">

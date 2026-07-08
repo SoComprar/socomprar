@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Article } from "@/components/Article";
+import { getAbsoluteUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/sobre")({
   head: () => ({
     meta: [
       { title: "Sobre — SóComprar" },
       { name: "description", content: "Conheça o SóComprar, portal brasileiro de ofertas e cupons." },
-      { property: "og:url", content: "/sobre" },
+      { property: "og:url", content: getAbsoluteUrl("/sobre") },
     ],
-    links: [{ rel: "canonical", href: "/sobre" }],
+    links: [{ rel: "canonical", href: getAbsoluteUrl("/sobre") }],
   }),
   component: () => (
     <Article title="Sobre o SóComprar" description="A gente pesquisa. Você economiza.">
