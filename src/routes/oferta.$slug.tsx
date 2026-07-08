@@ -14,7 +14,12 @@ export const Route = createFileRoute("/oferta/$slug")({
   },
   head: ({ loaderData }) => {
     if (!loaderData)
-      return { meta: [{ title: "Oferta não encontrada — SóComprar" }, { name: "robots", content: "noindex" }] };
+      return {
+        meta: [
+          { title: "Oferta não encontrada — SóComprar" },
+          { name: "robots", content: "noindex" },
+        ],
+      };
     const { offer } = loaderData;
     const offerUrl = getAbsoluteUrl(`/oferta/${offer.slug}`);
     return {
@@ -65,7 +70,9 @@ function OfferNotFound() {
       <div className="mx-auto max-w-lg px-4 py-24 text-center">
         <h1 className="text-2xl font-extrabold text-primary">Oferta não encontrada</h1>
         <p className="mt-2 text-sm text-muted-foreground">Talvez ela tenha expirado.</p>
-        <Link to="/ofertas" className="btn-brand mt-6 inline-flex">Ver ofertas</Link>
+        <Link to="/ofertas" className="btn-brand mt-6 inline-flex">
+          Ver ofertas
+        </Link>
       </div>
     </PageShell>
   );
@@ -91,7 +98,10 @@ function OfferPage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-6xl px-4 py-8">
-        <Link to="/ofertas" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary">
+        <Link
+          to="/ofertas"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
+        >
           <ArrowLeft className="h-4 w-4" /> Voltar às ofertas
         </Link>
 
@@ -107,18 +117,29 @@ function OfferPage() {
 
           <div>
             <div className="flex flex-wrap gap-2">
-              <span className="chip"><Store className="h-3.5 w-3.5" /> {offer.marketplace}</span>
+              <span className="chip">
+                <Store className="h-3.5 w-3.5" /> {offer.marketplace}
+              </span>
               {offer.category ? (
-                <span className="chip capitalize"><Tag className="h-3.5 w-3.5" /> {offer.category.name}</span>
+                <span className="chip capitalize">
+                  <Tag className="h-3.5 w-3.5" /> {offer.category.name}
+                </span>
               ) : null}
-              <span className="chip"><Calendar className="h-3.5 w-3.5" /> {new Date(offer.created_at).toLocaleDateString("pt-BR")}</span>
+              <span className="chip">
+                <Calendar className="h-3.5 w-3.5" />{" "}
+                {new Date(offer.created_at).toLocaleDateString("pt-BR")}
+              </span>
             </div>
 
             <h1 className="mt-4 text-2xl font-extrabold text-primary sm:text-3xl">{offer.title}</h1>
 
             <div className="mt-6 rounded-2xl border border-border bg-card p-5">
-              <div className="text-sm text-muted-foreground line-through">{formatPrice(offer.old_price)}</div>
-              <div className="text-4xl font-black text-primary">{formatPrice(offer.current_price)}</div>
+              <div className="text-sm text-muted-foreground line-through">
+                {formatPrice(offer.old_price)}
+              </div>
+              <div className="text-4xl font-black text-primary">
+                {formatPrice(offer.current_price)}
+              </div>
               <div className="mt-1 text-sm font-semibold" style={{ color: "var(--brand)" }}>
                 Você economiza {formatPrice(offer.old_price - offer.current_price)} ({pct}%)
               </div>
@@ -184,7 +205,11 @@ function OfferPage() {
                     aria-label="Copiar link"
                     className="grid h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground hover:text-primary"
                   >
-                    {copied ? <Check className="h-4 w-4 text-[color:var(--success)]" /> : <Copy className="h-4 w-4" />}
+                    {copied ? (
+                      <Check className="h-4 w-4 text-[color:var(--success)]" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -192,12 +217,14 @@ function OfferPage() {
 
             <div className="mt-6">
               <h2 className="text-base font-semibold text-primary">Descrição</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{offer.description}</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {offer.description}
+              </p>
             </div>
 
             <p className="mt-6 text-xs text-muted-foreground">
-              * Preço sujeito a alteração pelo marketplace. Este é um link de afiliado — podemos receber
-              comissão sem custo adicional para você.
+              * Preço sujeito a alteração pelo marketplace. Este é um link de afiliado — podemos
+              receber comissão sem custo adicional para você.
             </p>
           </div>
         </div>

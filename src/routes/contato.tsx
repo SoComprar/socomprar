@@ -26,8 +26,16 @@ function ContatoPage() {
 
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           {WHATSAPP_CONTACT_LINK ? (
-            <a href={WHATSAPP_CONTACT_LINK} target="_blank" rel="noreferrer" className="card-elevated flex flex-col items-center gap-3 p-6 text-center">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft" style={{ color: "var(--brand)" }}>
+            <a
+              href={WHATSAPP_CONTACT_LINK}
+              target="_blank"
+              rel="noreferrer"
+              className="card-elevated flex flex-col items-center gap-3 p-6 text-center"
+            >
+              <div
+                className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft"
+                style={{ color: "var(--brand)" }}
+              >
                 <MessageCircle className="h-5 w-5" />
               </div>
               <div className="font-semibold text-primary">WhatsApp</div>
@@ -35,16 +43,30 @@ function ContatoPage() {
             </a>
           ) : null}
           {INSTAGRAM_URL ? (
-            <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="card-elevated flex flex-col items-center gap-3 p-6 text-center">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft" style={{ color: "var(--brand)" }}>
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="card-elevated flex flex-col items-center gap-3 p-6 text-center"
+            >
+              <div
+                className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft"
+                style={{ color: "var(--brand)" }}
+              >
                 <Instagram className="h-5 w-5" />
               </div>
               <div className="font-semibold text-primary">Instagram</div>
               <div className="text-xs text-muted-foreground">Siga a gente</div>
             </a>
           ) : null}
-          <a href="mailto:contato@socomprar.com.br" className="card-elevated flex flex-col items-center gap-3 p-6 text-center">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft" style={{ color: "var(--brand)" }}>
+          <a
+            href="mailto:contato@socomprar.com.br"
+            className="card-elevated flex flex-col items-center gap-3 p-6 text-center"
+          >
+            <div
+              className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft"
+              style={{ color: "var(--brand)" }}
+            >
               <Mail className="h-5 w-5" />
             </div>
             <div className="font-semibold text-primary">E-mail</div>

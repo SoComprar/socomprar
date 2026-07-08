@@ -88,7 +88,11 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
             aria-label="Copiar link"
             className="grid h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground hover:text-primary"
           >
-            {copied ? <Check className="h-4 w-4 text-[color:var(--success)]" /> : <Copy className="h-4 w-4" />}
+            {copied ? (
+              <Check className="h-4 w-4 text-[color:var(--success)]" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>

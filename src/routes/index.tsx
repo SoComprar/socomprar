@@ -26,8 +26,19 @@ import { WHATSAPP_CONTACT_LINK, getAbsoluteUrl } from "@/lib/site";
 import heroImg from "@/assets/hero.jpg";
 
 const iconMap = {
-  Cpu, Home: HomeIcon, ChefHat, Wrench, Sparkles, Laptop, Smartphone,
-  Gamepad2, Dumbbell, Shirt, ToyBrick, Car, PawPrint,
+  Cpu,
+  Home: HomeIcon,
+  ChefHat,
+  Wrench,
+  Sparkles,
+  Laptop,
+  Smartphone,
+  Gamepad2,
+  Dumbbell,
+  Shirt,
+  ToyBrick,
+  Car,
+  PawPrint,
 } as const;
 
 export const Route = createFileRoute("/")({
@@ -75,12 +86,11 @@ function Index() {
               <Tag className="h-3.5 w-3.5" /> Ofertas atualizadas diariamente
             </span>
             <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] text-primary sm:text-5xl md:text-6xl">
-              A gente pesquisa.{" "}
-              <span style={{ color: "var(--brand)" }}>Você economiza.</span>
+              A gente pesquisa. <span style={{ color: "var(--brand)" }}>Você economiza.</span>
             </h1>
             <p className="mt-5 max-w-lg text-base text-muted-foreground sm:text-lg">
-              A gente pesquisa as melhores ofertas nos maiores marketplaces do Brasil
-              para que você economize tempo e dinheiro.
+              A gente pesquisa as melhores ofertas nos maiores marketplaces do Brasil para que você
+              economize tempo e dinheiro.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/ofertas" className="btn-brand">
@@ -99,9 +109,16 @@ function Index() {
             </div>
 
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" style={{ color: "var(--brand)" }} /> Lojas confiáveis</span>
-              <span className="inline-flex items-center gap-1.5"><Zap className="h-4 w-4" style={{ color: "var(--brand)" }} /> Ofertas em tempo real</span>
-              <span className="inline-flex items-center gap-1.5"><Tag className="h-4 w-4" style={{ color: "var(--brand)" }} /> Descontos de até 70%</span>
+              <span className="inline-flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4" style={{ color: "var(--brand)" }} /> Lojas
+                confiáveis
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Zap className="h-4 w-4" style={{ color: "var(--brand)" }} /> Ofertas em tempo real
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Tag className="h-4 w-4" style={{ color: "var(--brand)" }} /> Descontos de até 70%
+              </span>
             </div>
           </div>
 
@@ -120,10 +137,14 @@ function Index() {
 
         <div className="border-y border-border bg-secondary/40">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-4 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:text-sm">
-            <span>Amazon</span><span className="opacity-40">•</span>
-            <span>Mercado Livre</span><span className="opacity-40">•</span>
-            <span>Magalu</span><span className="opacity-40">•</span>
-            <span>Shopee</span><span className="opacity-40">•</span>
+            <span>Amazon</span>
+            <span className="opacity-40">•</span>
+            <span>Mercado Livre</span>
+            <span className="opacity-40">•</span>
+            <span>Magalu</span>
+            <span className="opacity-40">•</span>
+            <span>Shopee</span>
+            <span className="opacity-40">•</span>
             <span>AliExpress</span>
           </div>
         </div>
@@ -171,27 +192,41 @@ function Index() {
               Selecionadas hoje para você economizar.
             </p>
           </div>
-          <Link to="/ofertas" className="hidden text-sm font-semibold text-primary hover:opacity-70 sm:inline-flex items-center gap-1">
+          <Link
+            to="/ofertas"
+            className="hidden text-sm font-semibold text-primary hover:opacity-70 sm:inline-flex items-center gap-1"
+          >
             Ver todas <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {featured.map((o) => <OfferCard key={o.id} offer={o} />)}
+          {featured.map((o) => (
+            <OfferCard key={o.id} offer={o} />
+          ))}
         </div>
       </section>
 
       {WHATSAPP_CONTACT_LINK ? (
         <section className="mx-auto max-w-6xl px-4 pb-20">
           <div className="relative overflow-hidden rounded-3xl bg-primary p-8 text-center sm:p-14">
-            <div aria-hidden className="absolute -right-16 -top-16 h-64 w-64 rounded-full opacity-30 blur-2xl" style={{ background: "var(--brand)" }} />
+            <div
+              aria-hidden
+              className="absolute -right-16 -top-16 h-64 w-64 rounded-full opacity-30 blur-2xl"
+              style={{ background: "var(--brand)" }}
+            />
             <h3 className="text-2xl font-extrabold text-primary-foreground sm:text-3xl">
               Receba as melhores ofertas primeiro
             </h3>
             <p className="mx-auto mt-3 max-w-xl text-sm text-primary-foreground/80">
               Entre no nosso grupo do WhatsApp e receba promoções selecionadas todos os dias.
             </p>
-            <a href={WHATSAPP_CONTACT_LINK} target="_blank" rel="noreferrer" className="btn-brand mt-6 inline-flex">
+            <a
+              href={WHATSAPP_CONTACT_LINK}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-brand mt-6 inline-flex"
+            >
               <MessageCircle className="h-4 w-4" /> Entrar no grupo
             </a>
           </div>

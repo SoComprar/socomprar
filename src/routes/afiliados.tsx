@@ -15,7 +15,8 @@ export const Route = createFileRoute("/afiliados")({
     <Article title="Divulgação de Afiliados">
       <p>
         Alguns links publicados neste site são links de afiliados. Caso você realize uma compra
-        através deles, poderemos receber uma comissão, <strong>sem qualquer custo adicional para você</strong>.
+        através deles, poderemos receber uma comissão,{" "}
+        <strong>sem qualquer custo adicional para você</strong>.
       </p>
       <p>
         Essa é a forma como mantemos o SóComprar gratuito. Só recomendamos ofertas que consideramos

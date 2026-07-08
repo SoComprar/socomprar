@@ -30,9 +30,15 @@ export const Route = createFileRoute("/privacidade")({
         <li>Cumprir obrigações legais.</li>
       </ul>
       <h2>3. Compartilhamento</h2>
-      <p>Não vendemos seus dados. Podemos compartilhá-los apenas com provedores de análise (ex.: Google) sob obrigações contratuais.</p>
+      <p>
+        Não vendemos seus dados. Podemos compartilhá-los apenas com provedores de análise (ex.:
+        Google) sob obrigações contratuais.
+      </p>
       <h2>4. Seus direitos</h2>
-      <p>Você pode solicitar acesso, correção ou exclusão dos seus dados a qualquer momento pelo e-mail contato@socomprar.com.br.</p>
+      <p>
+        Você pode solicitar acesso, correção ou exclusão dos seus dados a qualquer momento pelo
+        e-mail contato@socomprar.com.br.
+      </p>
       <h2>5. Cookies</h2>
       <p>Utilizamos cookies próprios e de terceiros. Você pode desativá-los no seu navegador.</p>
     </Article>

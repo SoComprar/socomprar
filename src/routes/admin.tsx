@@ -7,7 +7,11 @@ export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
       { title: "Admin — SóComprar" },
-      { name: "description", content: "Painel administrativo para gerenciar ofertas e cadastrar novos registros no Supabase." },
+      {
+        name: "description",
+        content:
+          "Painel administrativo para gerenciar ofertas e cadastrar novos registros no Supabase.",
+      },
       { property: "og:url", content: getAbsoluteUrl("/admin") },
       { name: "robots", content: "noindex" },
     ],

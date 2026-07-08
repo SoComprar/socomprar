@@ -20,7 +20,10 @@ export const Route = createFileRoute("/ofertas")({
   head: () => ({
     meta: [
       { title: "Ofertas — SóComprar" },
-      { name: "description", content: "Todas as ofertas selecionadas hoje pelos marketplaces parceiros." },
+      {
+        name: "description",
+        content: "Todas as ofertas selecionadas hoje pelos marketplaces parceiros.",
+      },
       { property: "og:url", content: getAbsoluteUrl("/ofertas") },
     ],
     links: [{ rel: "canonical", href: getAbsoluteUrl("/ofertas") }],
@@ -91,7 +94,9 @@ function OfertasPage() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {filtered.map((o) => <OfferCard key={o.id} offer={o} />)}
+          {filtered.map((o) => (
+            <OfferCard key={o.id} offer={o} />
+          ))}
         </div>
 
         {filtered.length === 0 && (

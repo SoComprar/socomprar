@@ -6,7 +6,10 @@ export const Route = createFileRoute("/sobre")({
   head: () => ({
     meta: [
       { title: "Sobre — SóComprar" },
-      { name: "description", content: "Conheça o SóComprar, portal brasileiro de ofertas e cupons." },
+      {
+        name: "description",
+        content: "Conheça o SóComprar, portal brasileiro de ofertas e cupons.",
+      },
       { property: "og:url", content: getAbsoluteUrl("/sobre") },
     ],
     links: [{ rel: "canonical", href: getAbsoluteUrl("/sobre") }],
@@ -25,12 +28,13 @@ export const Route = createFileRoute("/sobre")({
       </p>
       <h2>Como ganhamos dinheiro</h2>
       <p>
-        Alguns links publicados são de afiliados. Se você comprar através deles, podemos receber
-        uma comissão do marketplace, sem qualquer custo adicional. É o que mantém o SóComprar no ar.
+        Alguns links publicados são de afiliados. Se você comprar através deles, podemos receber uma
+        comissão do marketplace, sem qualquer custo adicional. É o que mantém o SóComprar no ar.
       </p>
       <h2>Fale com a gente</h2>
       <p>
-        Encontrou uma oferta imperdível? Quer sugerir uma categoria? Nos chame pelo Instagram ou WhatsApp.
+        Encontrou uma oferta imperdível? Quer sugerir uma categoria? Nos chame pelo Instagram ou
+        WhatsApp.
       </p>
     </Article>
   ),

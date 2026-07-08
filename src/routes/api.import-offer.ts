@@ -51,12 +51,18 @@ function extractTitleTag(html: string): string | null {
 }
 
 function extractJsonLdProduct(html: string): { price?: number; highPrice?: number } | null {
-  const scriptMatches = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  const scriptMatches = html.matchAll(
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+  );
 
   for (const match of scriptMatches) {
     try {
       const parsed = JSON.parse(match[1].trim());
-      const candidates = Array.isArray(parsed) ? parsed : parsed["@graph"] ? parsed["@graph"] : [parsed];
+      const candidates = Array.isArray(parsed)
+        ? parsed
+        : parsed["@graph"]
+          ? parsed["@graph"]
+          : [parsed];
 
       for (const candidate of candidates) {
         const type = candidate?.["@type"];
@@ -129,7 +135,10 @@ export const Route = createFileRoute("/api/import-offer")({
 
           if (!response.ok) {
             return Response.json(
-              { ok: false, error: `O site retornou erro ${response.status}. Preencha manualmente.` },
+              {
+                ok: false,
+                error: `O site retornou erro ${response.status}. Preencha manualmente.`,
+              },
               { status: 200 },
             );
           }
@@ -145,7 +154,8 @@ export const Route = createFileRoute("/api/import-offer")({
         }
 
         const title = extractMetaContent(html, "og:title") ?? extractTitleTag(html);
-        const description = extractMetaContent(html, "og:description") ?? extractMetaContent(html, "description");
+        const description =
+          extractMetaContent(html, "og:description") ?? extractMetaContent(html, "description");
         const imageUrl = extractMetaContent(html, "og:image");
         const jsonLd = extractJsonLdProduct(html);
 
