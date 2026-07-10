@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Zap,
   Tag,
+  Package,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { OfferCard } from "@/components/OfferCard";
@@ -39,7 +40,26 @@ const iconMap = {
   ToyBrick,
   Car,
   PawPrint,
+  Package,
 } as const;
+
+// Mapa de categorias para ícones apropriados (fallback quando icon não vem do BD)
+const categoryIconMap: Record<string, keyof typeof iconMap> = {
+  automotivo: "Car",
+  beleza: "Sparkles",
+  brinquedos: "ToyBrick",
+  casa: "Home",
+  celulares: "Smartphone",
+  cozinha: "ChefHat",
+  eletrônicos: "Laptop",
+  esporte: "Dumbbell",
+  esportes: "Dumbbell",
+  ferramentas: "Wrench",
+  games: "Gamepad2",
+  informática: "Cpu",
+  moda: "Shirt",
+  pet: "PawPrint",
+};
 
 export const Route = createFileRoute("/")({
   loader: async () => {
@@ -164,7 +184,13 @@ function Index() {
 
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7">
           {categories.map((c) => {
-            const Icon = c.icon ? iconMap[c.icon as keyof typeof iconMap] : undefined;
+            // Prioridade: 1) icon do BD, 2) mapa de categoria, 3) Package
+            let iconKey = c.icon as keyof typeof iconMap | undefined;
+            if (!iconKey) {
+              const categoryKey = c.slug.toLowerCase().replace(/-/g, "");
+              iconKey = categoryIconMap[categoryKey] || "Package";
+            }
+            const Icon = iconMap[iconKey];
             return (
               <Link
                 key={c.slug}
@@ -173,7 +199,7 @@ function Index() {
                 className="card-elevated group flex flex-col items-center gap-2 px-2 py-4 text-center"
               >
                 <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft transition-colors">
-                  {Icon ? <Icon className="h-5 w-5" style={{ color: "var(--brand)" }} /> : null}
+                  <Icon className="h-5 w-5" style={{ color: "var(--brand)" }} />
                 </div>
                 <span className="text-xs font-semibold text-foreground">{c.name}</span>
               </Link>

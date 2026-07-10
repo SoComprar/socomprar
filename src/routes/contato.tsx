@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Instagram, MessageCircle, Mail } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { INSTAGRAM_URL, WHATSAPP_CONTACT_LINK, getAbsoluteUrl } from "@/lib/site";
+import { INSTAGRAM_URL, WHATSAPP_CONTACT_LINK, CONTACT_EMAIL, getAbsoluteUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/contato")({
   head: () => ({
@@ -60,7 +60,7 @@ function ContatoPage() {
             </a>
           ) : null}
           <a
-            href="mailto:contato@socomprar.com.br"
+            href={`mailto:${CONTACT_EMAIL}`}
             className="card-elevated flex flex-col items-center gap-3 p-6 text-center"
           >
             <div
@@ -70,7 +70,7 @@ function ContatoPage() {
               <Mail className="h-5 w-5" />
             </div>
             <div className="font-semibold text-primary">E-mail</div>
-            <div className="text-xs text-muted-foreground">contato@socomprar.com.br</div>
+            <div className="text-xs text-muted-foreground">{CONTACT_EMAIL}</div>
           </a>
         </div>
       </section>

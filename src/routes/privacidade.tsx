@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Article } from "@/components/Article";
+import { CONTACT_EMAIL } from "@/lib/site";
 import { getAbsoluteUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/privacidade")({
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/privacidade")({
       <h2>4. Seus direitos</h2>
       <p>
         Você pode solicitar acesso, correção ou exclusão dos seus dados a qualquer momento pelo
-        e-mail contato@socomprar.com.br.
+        e-mail {CONTACT_EMAIL}.
       </p>
       <h2>5. Cookies</h2>
       <p>Utilizamos cookies próprios e de terceiros. Você pode desativá-los no seu navegador.</p>

@@ -51,6 +51,10 @@ export const INSTAGRAM_URL = (
   (import.meta.env.VITE_INSTAGRAM_URL as string | undefined) ?? ""
 ).trim();
 
+export const CONTACT_EMAIL = (
+  (import.meta.env.VITE_CONTACT_EMAIL as string | undefined) ?? "contato@socomprar.com.br"
+).trim();
+
 // Links de COMPARTILHAMENTO de uma oferta (diferente do contato da loja acima).
 // Usados no card e na página da oferta.
 export function getShareLinks(url: string, title: string) {
