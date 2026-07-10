@@ -52,7 +52,7 @@ export const INSTAGRAM_URL = (
 ).trim();
 
 export const CONTACT_EMAIL = (
-  (import.meta.env.VITE_CONTACT_EMAIL as string | undefined) ?? "contato@socomprar.com.br"
+  (import.meta.env.VITE_CONTACT_EMAIL as string | undefined) ?? "socomprar.oficial@gmail.com"
 ).trim();
 
 // Links de COMPARTILHAMENTO de uma oferta (diferente do contato da loja acima).
