@@ -29,11 +29,12 @@ const GENERIC_IMPORTER = new GenericImporter();
 // Confiança (0-100) por método de extração. category fica sempre 0: nenhuma
 // camada hoje tenta inferir categoria - o campo já existe pronto para quando
 // isso for implementado.
-const CONFIDENCE_BY_METHOD: Record<RawParsedData["method"], { data: number; description: number }> = {
-  jsonld: { data: 100, description: 90 },
-  opengraph: { data: 80, description: 70 },
-  html: { data: 50, description: 50 },
-};
+const CONFIDENCE_BY_METHOD: Record<RawParsedData["method"], { data: number; description: number }> =
+  {
+    jsonld: { data: 100, description: 90 },
+    opengraph: { data: 80, description: 70 },
+    html: { data: 50, description: 50 },
+  };
 
 // Ponto de extensão: no futuro, uma etapa de IA pode ser injetada aqui, entre
 // os Normalizers e o retorno final (melhorar título/descrição, gerar SEO,
@@ -55,10 +56,13 @@ export class ImportService {
     const url = new URL(rawUrl);
     const marketplace = detectMarketplace(url);
 
-    const importer = SPECIFIC_IMPORTERS.find((candidate) => candidate.supports(url)) ?? GENERIC_IMPORTER;
+    const importer =
+      SPECIFIC_IMPORTERS.find((candidate) => candidate.supports(url)) ?? GENERIC_IMPORTER;
     const html = await importer.fetch(url);
 
-    const parsed: RawParsedData = parseJsonLd(html) ?? parseOpenGraph(html) ?? parseHtml(html) ?? { method: "html" };
+    const parsed: RawParsedData = parseJsonLd(html) ??
+      parseOpenGraph(html) ??
+      parseHtml(html) ?? { method: "html" };
     const confidenceLevel = CONFIDENCE_BY_METHOD[parsed.method];
 
     const normalized: ImportedOfferData = {

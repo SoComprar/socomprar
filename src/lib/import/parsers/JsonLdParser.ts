@@ -4,7 +4,9 @@ import type { RawParsedData } from "../types";
 // se existir. Responsabilidade única: interpretar esse formato específico.
 // Não sabe nada sobre marketplace, nem faz fetch.
 export function parseJsonLd(html: string): RawParsedData | null {
-  const scriptMatches = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  const scriptMatches = html.matchAll(
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+  );
 
   for (const match of scriptMatches) {
     try {
@@ -25,7 +27,8 @@ export function parseJsonLd(html: string): RawParsedData | null {
 
         return {
           title: typeof candidate.name === "string" ? candidate.name : undefined,
-          description: typeof candidate.description === "string" ? candidate.description : undefined,
+          description:
+            typeof candidate.description === "string" ? candidate.description : undefined,
           imageUrl: typeof image === "string" ? image : undefined,
           price: Number.isFinite(price) ? price : undefined,
           oldPrice: Number.isFinite(highPrice) ? highPrice : undefined,
