@@ -1,4 +1,4 @@
-import type { Importer } from "../types";
+import type { FetchResult, Importer } from "../types";
 import { hostnameMatches } from "../utils/marketplace";
 import { fetchHtml } from "../utils/fetchHtml";
 
@@ -15,7 +15,7 @@ export class ShopeeImporter implements Importer {
     return hostnameMatches(url, "Shopee");
   }
 
-  fetch(url: URL): Promise<string> {
+  fetch(url: URL): Promise<FetchResult> {
     return fetchHtml(url);
   }
 }

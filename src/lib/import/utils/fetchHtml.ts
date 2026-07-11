@@ -1,13 +1,19 @@
-// Helper de baixo nível compartilhado por todos os Importers: busca o HTML
-// bruto de uma URL, com timeout e um User-Agent de navegador comum (aumenta a
-// chance de não ser bloqueado por proteção anti-bot). Não interpreta o
-// conteúdo — isso é responsabilidade dos Parsers.
+import type { FetchResult } from "../types";
+
+// Helper de baixo nível compartilhado por todos os Importers baseados em
+// HTML: busca o conteúdo bruto de uma URL, com timeout e um User-Agent de
+// navegador comum (aumenta a chance de não ser bloqueado por proteção
+// anti-bot). Não interpreta o conteúdo — isso é responsabilidade dos
+// Parsers.
 
 const DEFAULT_TIMEOUT_MS = 8000;
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
-export async function fetchHtml(url: URL, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<string> {
+export async function fetchHtml(
+  url: URL,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<FetchResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -24,7 +30,8 @@ export async function fetchHtml(url: URL, timeoutMs: number = DEFAULT_TIMEOUT_MS
       throw new Error(`status ${response.status}`);
     }
 
-    return await response.text();
+    const content = await response.text();
+    return { content, format: "html" };
   } finally {
     clearTimeout(timeout);
   }

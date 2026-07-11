@@ -1,4 +1,4 @@
-import type { Importer } from "../types";
+import type { FetchResult, Importer } from "../types";
 import { fetchHtml } from "../utils/fetchHtml";
 
 // Fallback: busca o HTML bruto de qualquer URL, quando nenhum importador
@@ -9,7 +9,7 @@ export class GenericImporter implements Importer {
     return true;
   }
 
-  fetch(url: URL): Promise<string> {
+  fetch(url: URL): Promise<FetchResult> {
     return fetchHtml(url);
   }
 }
