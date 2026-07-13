@@ -1,0 +1,355 @@
+diff --git a/src/components/admin/AdminDashboard.tsx b/src/components/admin/AdminDashboard.tsx
+index 0edf264..62c07da 100644
+--- a/src/components/admin/AdminDashboard.tsx
++++ b/src/components/admin/AdminDashboard.tsx
+@@ -1,8 +1,15 @@
+ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+-import { Database, Sparkles, ShieldCheck, Trash2 } from "lucide-react";
++import { ShieldCheck, Trash2 } from "lucide-react";
+ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+ import { Button } from "@/components/ui/button";
+-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
++import {
++  Table,
++  TableBody,
++  TableCell,
++  TableHead,
++  TableHeader,
++  TableRow,
++} from "@/components/ui/table";
+ import { isSupabaseConfigured } from "@/lib/supabase";
+ import { formatPrice } from "@/lib/offers";
+ import { OfferForm } from "./OfferForm";
+@@ -31,85 +38,21 @@ export function AdminDashboard() {
+   };
+ 
+   return (
+-    <div className="mx-auto max-w-6xl px-4 py-10">
+-      <header className="mb-8 rounded-3xl border border-border bg-card p-8 shadow-sm">
+-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+-          <div>
+-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+-              Área administrativa
+-            </p>
+-            <h1 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl">
+-              Painel de gestão de ofertas
+-            </h1>
+-            <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
+-              Cadastre e remova ofertas diretamente na tabela <span className="font-semibold">offers</span> do Supabase.
+-            </p>
+-          </div>
+-
+-          <div className="grid gap-2 rounded-3xl border border-border bg-secondary/70 p-4 text-sm text-foreground shadow-sm sm:text-base">
+-            <div className="flex items-center justify-between gap-3">
+-              <span className="font-medium">Status do Supabase</span>
+-              <span className={isSupabaseConfigured ? "text-success" : "text-destructive"}>
+-                {isSupabaseConfigured ? "Configurado" : "Não configurado"}
+-              </span>
+-            </div>
+-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+-              <ShieldCheck className="h-4 w-4" />
+-              {isSupabaseConfigured
+-                ? "Preparado para inserções e exclusões no banco"
+-                : "Defina as variáveis de ambiente no .env"}
+-            </div>
+-          </div>
+-        </div>
+-      </header>
+-
+-      <div className="grid gap-4 md:grid-cols-3">
+-        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+-            <Sparkles className="h-5 w-5" />
+-          </div>
+-          <p className="text-sm font-semibold text-muted-foreground">Cadastro rápido</p>
+-          <p className="mt-3 text-2xl font-extrabold text-foreground">Ofertas</p>
+-          <p className="mt-2 text-sm text-muted-foreground">
+-            Use o formulário para registrar promoções em tempo real no Supabase.
++    <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
++      <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
++        <div>
++          <h1 className="text-2xl font-extrabold text-primary sm:text-3xl">Painel de ofertas</h1>
++          <p className="mt-1 text-sm text-muted-foreground">
++            Cadastre e gerencie ofertas no Supabase.
+           </p>
+         </div>
+-
+-        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/50 text-foreground">
+-            <Database className="h-5 w-5" />
+-          </div>
+-          <p className="text-sm font-semibold text-muted-foreground">Tabela</p>
+-          <p className="mt-3 text-2xl font-extrabold text-foreground">offers</p>
+-          <p className="mt-2 text-sm text-muted-foreground">
+-            Os registros criados aqui serão enviados diretamente para a tabela de ofertas.
+-          </p>
++        <div className="flex items-center gap-2 self-start rounded-full border border-border bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground sm:self-auto">
++          <ShieldCheck className="h-3.5 w-3.5" />
++          {isSupabaseConfigured ? "Supabase conectado" : "Supabase não configurado"}
+         </div>
++      </header>
+ 
+-        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/40 text-foreground">
+-            <ShieldCheck className="h-5 w-5" />
+-          </div>
+-          <p className="text-sm font-semibold text-muted-foreground">Infra</p>
+-          <p className="mt-3 text-2xl font-extrabold text-foreground">Seguro</p>
+-          <p className="mt-2 text-sm text-muted-foreground">
+-            O painel funciona sem alterar as páginas públicas ou o layout existente.
+-          </p>
+-        </div>
+-      </div>
+-
+-      <section className="mt-10 rounded-3xl border border-border bg-card p-8 shadow-sm">
+-        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+-          <div>
+-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+-              Nova oferta
+-            </p>
+-            <h2 className="mt-3 text-2xl font-extrabold text-primary">Cadastro de ofertas</h2>
+-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+-              Preencha os dados abaixo para enviar uma oferta ao Supabase.
+-            </p>
+-          </div>
+-        </div>
++      <section className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-8">
+         <OfferForm onSuccess={handleOfferCreated} />
+       </section>
+ 
+@@ -124,7 +67,10 @@ export function AdminDashboard() {
+               Apague registros diretamente da tabela de ofertas.
+             </p>
+           </div>
+-          <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["adminOffers"] })}>
++          <Button
++            variant="outline"
++            onClick={() => queryClient.invalidateQueries({ queryKey: ["adminOffers"] })}
++          >
+             Atualizar lista
+           </Button>
+         </div>
+@@ -132,14 +78,22 @@ export function AdminDashboard() {
+         {offersQuery.isError ? (
+           <Alert variant="destructive">
+             <AlertTitle>Erro ao carregar ofertas</AlertTitle>
+-            <AlertDescription>{offersQuery.error instanceof Error ? offersQuery.error.message : "Erro desconhecido."}</AlertDescription>
++            <AlertDescription>
++              {offersQuery.error instanceof Error
++                ? offersQuery.error.message
++                : "Erro desconhecido."}
++            </AlertDescription>
+           </Alert>
+         ) : null}
+ 
+         {deleteMutation.isError ? (
+           <Alert variant="destructive">
+             <AlertTitle>Erro ao excluir oferta</AlertTitle>
+-            <AlertDescription>{deleteMutation.error instanceof Error ? deleteMutation.error.message : "Erro desconhecido."}</AlertDescription>
++            <AlertDescription>
++              {deleteMutation.error instanceof Error
++                ? deleteMutation.error.message
++                : "Erro desconhecido."}
++            </AlertDescription>
+           </Alert>
+         ) : null}
+ 
+diff --git a/src/components/admin/OfferForm.tsx b/src/components/admin/OfferForm.tsx
+index 8c6ef6a..952e9bd 100644
+--- a/src/components/admin/OfferForm.tsx
++++ b/src/components/admin/OfferForm.tsx
+@@ -236,7 +236,7 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
+         ) : null}
+       </div>
+ 
+-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
++      <form id="offer-form" onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
+         <div className="grid gap-6 md:grid-cols-2">
+           <div className="grid gap-2">
+             <Label htmlFor="title">Título</Label>
+@@ -400,16 +400,32 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
+           />
+         </div>
+ 
+-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
++        <div className="flex flex-col gap-3 pb-20 sm:flex-row sm:items-center sm:justify-between sm:pb-0">
+           <p className="text-sm text-muted-foreground">
+             Os dados serão enviados diretamente para a tabela{" "}
+             <span className="font-semibold">offers</span>.
+           </p>
+-          <Button type="submit" disabled={form.formState.isSubmitting}>
++          <Button
++            type="submit"
++            disabled={form.formState.isSubmitting}
++            className="hidden sm:inline-flex"
++          >
+             Salvar oferta
+           </Button>
+         </div>
+       </form>
++
++      {/* Botão fixo no rodapé, só no mobile - evita precisar rolar até o fim do formulário. */}
++      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-md sm:hidden">
++        <Button
++          type="submit"
++          form="offer-form"
++          disabled={form.formState.isSubmitting}
++          className="w-full !py-3.5 text-base"
++        >
++          Salvar oferta
++        </Button>
++      </div>
+     </div>
+   );
+ }
+diff --git a/src/routes/oferta.$slug.tsx b/src/routes/oferta.$slug.tsx
+index 5d59e45..8ef81d0 100644
+--- a/src/routes/oferta.$slug.tsx
++++ b/src/routes/oferta.$slug.tsx
+@@ -1,11 +1,20 @@
+ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+-import { ExternalLink, ArrowLeft, Store, Calendar, Tag, Copy, Check } from "lucide-react";
++import {
++  ExternalLink,
++  ArrowLeft,
++  Store,
++  Calendar,
++  Tag,
++  Copy,
++  Check,
++  Instagram,
++  ChevronDown,
++} from "lucide-react";
+ import { useState } from "react";
+ import { PageShell } from "@/components/PageShell";
+ import { formatPrice, discount } from "@/lib/offers";
+ import { fetchOfferBySlug } from "@/lib/offers.service";
+ import { getAbsoluteUrl, getShareLinks, SITE_NAME } from "@/lib/site";
+-
+ export const Route = createFileRoute("/oferta/$slug")({
+   loader: async ({ params }) => {
+     const offer = await fetchOfferBySlug(params.slug);
+@@ -82,8 +91,11 @@ function OfferPage() {
+   const { offer } = Route.useLoaderData();
+   const pct = discount(offer.current_price, offer.old_price);
+   const [copied, setCopied] = useState(false);
++  const [descExpanded, setDescExpanded] = useState(false);
++  const [igMessage, setIgMessage] = useState<string | null>(null);
+   const offerUrl = getAbsoluteUrl(`/oferta/${offer.slug}`);
+   const shareLinks = getShareLinks(offerUrl, offer.title);
++  const isLongDescription = offer.description.length > 220;
+ 
+   const copyLink = async () => {
+     try {
+@@ -95,6 +107,20 @@ function OfferPage() {
+     }
+   };
+ 
++  // Instagram não tem compartilhamento direto de link. Tenta abrir o app (via
++  // deep link do Instagram Direct); se não suportado, copia o link e avisa o
++  // usuário pra colar manualmente (ex: nos stories/bio).
++  const shareInstagram = async () => {
++    try {
++      await navigator.clipboard.writeText(offerUrl);
++      setIgMessage("Link copiado! Cole no Instagram (bio, stories ou direct).");
++    } catch {
++      setIgMessage("Não foi possível copiar o link automaticamente.");
++    }
++    window.open("instagram://direct", "_blank");
++    setTimeout(() => setIgMessage(null), 3200);
++  };
++
+   return (
+     <PageShell>
+       <div className="mx-auto max-w-6xl px-4 py-8">
+@@ -108,7 +134,11 @@ function OfferPage() {
+         <div className="mt-6 grid gap-8 md:grid-cols-2">
+           <div className="card-elevated overflow-hidden">
+             <div className="relative aspect-square bg-secondary">
+-              <img src={offer.image_url} alt={offer.title} className="h-full w-full object-cover" />
++              <img
++                src={offer.image_url}
++                alt={offer.title}
++                className="h-full w-full object-contain p-4"
++              />
+               <span className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-sm font-bold text-brand-foreground shadow-md">
+                 -{pct}%
+               </span>
+@@ -148,7 +178,7 @@ function OfferPage() {
+                 href={offer.affiliate_url}
+                 target="_blank"
+                 rel="noopener noreferrer sponsored"
+-                className="btn-brand mt-5 w-full !py-3.5 text-base"
++                className="btn-brand mt-5 hidden w-full !py-3.5 text-base sm:inline-flex"
+               >
+                 Comprar Agora <ExternalLink className="h-4 w-4" />
+               </a>
+@@ -200,6 +230,13 @@ function OfferPage() {
+                       <path d="M21.944 4.667 18.6 20.42c-.253 1.113-.914 1.39-1.853.865l-5.12-3.774-2.47 2.377c-.273.273-.502.502-1.03.502l.368-5.226 9.51-8.593c.414-.368-.09-.573-.643-.205L6.19 12.99l-5.107-1.598c-1.11-.347-1.13-1.11.232-1.643L20.517 3.09c.925-.347 1.734.205 1.427 1.577z" />
+                     </svg>
+                   </a>
++                  <button
++                    onClick={shareInstagram}
++                    aria-label="Compartilhar no Instagram"
++                    className="grid h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground hover:text-primary"
++                  >
++                    <Instagram className="h-4 w-4" />
++                  </button>
+                   <button
+                     onClick={copyLink}
+                     aria-label="Copiar link"
+@@ -212,14 +249,33 @@ function OfferPage() {
+                     )}
+                   </button>
+                 </div>
++                {igMessage ? (
++                  <p className="mt-2 text-xs text-muted-foreground">{igMessage}</p>
++                ) : null}
+               </div>
+             </div>
+ 
+             <div className="mt-6">
+               <h2 className="text-base font-semibold text-primary">Descrição</h2>
+-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
++              <p
++                className={`mt-2 text-sm leading-relaxed text-muted-foreground ${
++                  isLongDescription && !descExpanded ? "line-clamp-4" : ""
++                }`}
++              >
+                 {offer.description}
+               </p>
++              {isLongDescription ? (
++                <button
++                  onClick={() => setDescExpanded((v) => !v)}
++                  className="mt-1 inline-flex items-center gap-1 text-sm font-semibold"
++                  style={{ color: "var(--brand)" }}
++                >
++                  {descExpanded ? "Mostrar menos" : "Mostrar mais"}
++                  <ChevronDown
++                    className={`h-4 w-4 transition-transform ${descExpanded ? "rotate-180" : ""}`}
++                  />
++                </button>
++              ) : null}
+             </div>
+ 
+             <p className="mt-6 text-xs text-muted-foreground">
+@@ -229,6 +285,19 @@ function OfferPage() {
+           </div>
+         </div>
+       </div>
++
++      {/* Botão Comprar fixo no rodapé, só no mobile - some no desktop (onde o botão normal acima já é visível sem rolar). */}
++      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-md sm:hidden">
++        <a
++          href={offer.affiliate_url}
++          target="_blank"
++          rel="noopener noreferrer sponsored"
++          className="btn-brand w-full !py-3.5 text-base"
++        >
++          Comprar Agora <ExternalLink className="h-4 w-4" />
++        </a>
++      </div>
++      <div className="h-20 sm:hidden" aria-hidden />
+     </PageShell>
+   );
+ }

@@ -1,8 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Database, Sparkles, ShieldCheck, Trash2 } from "lucide-react";
+import { ShieldCheck, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { formatPrice } from "@/lib/offers";
 import { OfferForm } from "./OfferForm";
@@ -31,85 +38,21 @@ export function AdminDashboard() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <header className="mb-8 rounded-3xl border border-border bg-card p-8 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-              Área administrativa
-            </p>
-            <h1 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl">
-              Painel de gestão de ofertas
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-              Cadastre e remova ofertas diretamente na tabela <span className="font-semibold">offers</span> do Supabase.
-            </p>
-          </div>
-
-          <div className="grid gap-2 rounded-3xl border border-border bg-secondary/70 p-4 text-sm text-foreground shadow-sm sm:text-base">
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-medium">Status do Supabase</span>
-              <span className={isSupabaseConfigured ? "text-success" : "text-destructive"}>
-                {isSupabaseConfigured ? "Configurado" : "Não configurado"}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="h-4 w-4" />
-              {isSupabaseConfigured
-                ? "Preparado para inserções e exclusões no banco"
-                : "Defina as variáveis de ambiente no .env"}
-            </div>
-          </div>
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
+      <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold text-primary sm:text-3xl">Painel de ofertas</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Cadastre e gerencie ofertas no Supabase.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 self-start rounded-full border border-border bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground sm:self-auto">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          {isSupabaseConfigured ? "Supabase conectado" : "Supabase não configurado"}
         </div>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <p className="text-sm font-semibold text-muted-foreground">Cadastro rápido</p>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">Ofertas</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Use o formulário para registrar promoções em tempo real no Supabase.
-          </p>
-        </div>
-
-        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/50 text-foreground">
-            <Database className="h-5 w-5" />
-          </div>
-          <p className="text-sm font-semibold text-muted-foreground">Tabela</p>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">offers</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Os registros criados aqui serão enviados diretamente para a tabela de ofertas.
-          </p>
-        </div>
-
-        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/40 text-foreground">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-          <p className="text-sm font-semibold text-muted-foreground">Infra</p>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">Seguro</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            O painel funciona sem alterar as páginas públicas ou o layout existente.
-          </p>
-        </div>
-      </div>
-
-      <section className="mt-10 rounded-3xl border border-border bg-card p-8 shadow-sm">
-        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-              Nova oferta
-            </p>
-            <h2 className="mt-3 text-2xl font-extrabold text-primary">Cadastro de ofertas</h2>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Preencha os dados abaixo para enviar uma oferta ao Supabase.
-            </p>
-          </div>
-        </div>
+      <section className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-8">
         <OfferForm onSuccess={handleOfferCreated} />
       </section>
 
@@ -124,7 +67,10 @@ export function AdminDashboard() {
               Apague registros diretamente da tabela de ofertas.
             </p>
           </div>
-          <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["adminOffers"] })}>
+          <Button
+            variant="outline"
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["adminOffers"] })}
+          >
             Atualizar lista
           </Button>
         </div>
@@ -132,14 +78,22 @@ export function AdminDashboard() {
         {offersQuery.isError ? (
           <Alert variant="destructive">
             <AlertTitle>Erro ao carregar ofertas</AlertTitle>
-            <AlertDescription>{offersQuery.error instanceof Error ? offersQuery.error.message : "Erro desconhecido."}</AlertDescription>
+            <AlertDescription>
+              {offersQuery.error instanceof Error
+                ? offersQuery.error.message
+                : "Erro desconhecido."}
+            </AlertDescription>
           </Alert>
         ) : null}
 
         {deleteMutation.isError ? (
           <Alert variant="destructive">
             <AlertTitle>Erro ao excluir oferta</AlertTitle>
-            <AlertDescription>{deleteMutation.error instanceof Error ? deleteMutation.error.message : "Erro desconhecido."}</AlertDescription>
+            <AlertDescription>
+              {deleteMutation.error instanceof Error
+                ? deleteMutation.error.message
+                : "Erro desconhecido."}
+            </AlertDescription>
           </Alert>
         ) : null}
 

@@ -236,7 +236,7 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
         ) : null}
       </div>
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
+      <form id="offer-form" onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
         <div className="grid gap-6 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="title">Título</Label>
@@ -400,16 +400,32 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
           />
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 pb-20 sm:flex-row sm:items-center sm:justify-between sm:pb-0">
           <p className="text-sm text-muted-foreground">
             Os dados serão enviados diretamente para a tabela{" "}
             <span className="font-semibold">offers</span>.
           </p>
-          <Button type="submit" disabled={form.formState.isSubmitting}>
+          <Button
+            type="submit"
+            disabled={form.formState.isSubmitting}
+            className="hidden sm:inline-flex"
+          >
             Salvar oferta
           </Button>
         </div>
       </form>
+
+      {/* Botão fixo no rodapé, só no mobile - evita precisar rolar até o fim do formulário. */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-md sm:hidden">
+        <Button
+          type="submit"
+          form="offer-form"
+          disabled={form.formState.isSubmitting}
+          className="w-full !py-3.5 text-base"
+        >
+          Salvar oferta
+        </Button>
+      </div>
     </div>
   );
 }

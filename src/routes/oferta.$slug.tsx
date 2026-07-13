@@ -1,11 +1,20 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ExternalLink, ArrowLeft, Store, Calendar, Tag, Copy, Check } from "lucide-react";
+import {
+  ExternalLink,
+  ArrowLeft,
+  Store,
+  Calendar,
+  Tag,
+  Copy,
+  Check,
+  Instagram,
+  ChevronDown,
+} from "lucide-react";
 import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { formatPrice, discount } from "@/lib/offers";
 import { fetchOfferBySlug } from "@/lib/offers.service";
 import { getAbsoluteUrl, getShareLinks, SITE_NAME } from "@/lib/site";
-
 export const Route = createFileRoute("/oferta/$slug")({
   loader: async ({ params }) => {
     const offer = await fetchOfferBySlug(params.slug);
@@ -82,8 +91,11 @@ function OfferPage() {
   const { offer } = Route.useLoaderData();
   const pct = discount(offer.current_price, offer.old_price);
   const [copied, setCopied] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [igMessage, setIgMessage] = useState<string | null>(null);
   const offerUrl = getAbsoluteUrl(`/oferta/${offer.slug}`);
   const shareLinks = getShareLinks(offerUrl, offer.title);
+  const isLongDescription = offer.description.length > 220;
 
   const copyLink = async () => {
     try {
@@ -93,6 +105,20 @@ function OfferPage() {
     } catch {
       // Clipboard indisponível (permissão negada ou navegador sem suporte); ignora silenciosamente.
     }
+  };
+
+  // Instagram não tem compartilhamento direto de link. Tenta abrir o app (via
+  // deep link do Instagram Direct); se não suportado, copia o link e avisa o
+  // usuário pra colar manualmente (ex: nos stories/bio).
+  const shareInstagram = async () => {
+    try {
+      await navigator.clipboard.writeText(offerUrl);
+      setIgMessage("Link copiado! Cole no Instagram (bio, stories ou direct).");
+    } catch {
+      setIgMessage("Não foi possível copiar o link automaticamente.");
+    }
+    window.open("instagram://direct", "_blank");
+    setTimeout(() => setIgMessage(null), 3200);
   };
 
   return (
@@ -108,7 +134,11 @@ function OfferPage() {
         <div className="mt-6 grid gap-8 md:grid-cols-2">
           <div className="card-elevated overflow-hidden">
             <div className="relative aspect-square bg-secondary">
-              <img src={offer.image_url} alt={offer.title} className="h-full w-full object-cover" />
+              <img
+                src={offer.image_url}
+                alt={offer.title}
+                className="h-full w-full object-contain p-4"
+              />
               <span className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-sm font-bold text-brand-foreground shadow-md">
                 -{pct}%
               </span>
@@ -148,7 +178,7 @@ function OfferPage() {
                 href={offer.affiliate_url}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="btn-brand mt-5 w-full !py-3.5 text-base"
+                className="btn-brand mt-5 hidden w-full !py-3.5 text-base sm:inline-flex"
               >
                 Comprar Agora <ExternalLink className="h-4 w-4" />
               </a>
@@ -201,6 +231,13 @@ function OfferPage() {
                     </svg>
                   </a>
                   <button
+                    onClick={shareInstagram}
+                    aria-label="Compartilhar no Instagram"
+                    className="grid h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground hover:text-primary"
+                  >
+                    <Instagram className="h-4 w-4" />
+                  </button>
+                  <button
                     onClick={copyLink}
                     aria-label="Copiar link"
                     className="grid h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground hover:text-primary"
@@ -212,14 +249,33 @@ function OfferPage() {
                     )}
                   </button>
                 </div>
+                {igMessage ? (
+                  <p className="mt-2 text-xs text-muted-foreground">{igMessage}</p>
+                ) : null}
               </div>
             </div>
 
             <div className="mt-6">
               <h2 className="text-base font-semibold text-primary">Descrição</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              <p
+                className={`mt-2 text-sm leading-relaxed text-muted-foreground ${
+                  isLongDescription && !descExpanded ? "line-clamp-4" : ""
+                }`}
+              >
                 {offer.description}
               </p>
+              {isLongDescription ? (
+                <button
+                  onClick={() => setDescExpanded((v) => !v)}
+                  className="mt-1 inline-flex items-center gap-1 text-sm font-semibold"
+                  style={{ color: "var(--brand)" }}
+                >
+                  {descExpanded ? "Mostrar menos" : "Mostrar mais"}
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${descExpanded ? "rotate-180" : ""}`}
+                  />
+                </button>
+              ) : null}
             </div>
 
             <p className="mt-6 text-xs text-muted-foreground">
@@ -229,6 +285,19 @@ function OfferPage() {
           </div>
         </div>
       </div>
+
+      {/* Botão Comprar fixo no rodapé, só no mobile - some no desktop (onde o botão normal acima já é visível sem rolar). */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-md sm:hidden">
+        <a
+          href={offer.affiliate_url}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className="btn-brand w-full !py-3.5 text-base"
+        >
+          Comprar Agora <ExternalLink className="h-4 w-4" />
+        </a>
+      </div>
+      <div className="h-20 sm:hidden" aria-hidden />
     </PageShell>
   );
 }
