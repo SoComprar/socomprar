@@ -21,6 +21,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OfertaSlugRouteImport } from './routes/oferta.$slug'
 import { Route as ApiImportOfferRouteImport } from './routes/api.import-offer'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
 
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
@@ -82,10 +83,15 @@ const ApiImportOfferRoute = ApiImportOfferRouteImport.update({
   path: '/api/import-offer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/afiliados': typeof AfiliadosRoute
   '/contato': typeof ContatoRoute
   '/ofertas': typeof OfertasRoute
@@ -94,12 +100,13 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
+  '/admin/login': typeof AdminLoginRoute
   '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/afiliados': typeof AfiliadosRoute
   '/contato': typeof ContatoRoute
   '/ofertas': typeof OfertasRoute
@@ -108,13 +115,14 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
+  '/admin/login': typeof AdminLoginRoute
   '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/afiliados': typeof AfiliadosRoute
   '/contato': typeof ContatoRoute
   '/ofertas': typeof OfertasRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
+  '/admin/login': typeof AdminLoginRoute
   '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/sobre'
     | '/termos'
+    | '/admin/login'
     | '/api/import-offer'
     | '/oferta/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/sobre'
     | '/termos'
+    | '/admin/login'
     | '/api/import-offer'
     | '/oferta/$slug'
   id:
@@ -167,13 +178,14 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/sobre'
     | '/termos'
+    | '/admin/login'
     | '/api/import-offer'
     | '/oferta/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AfiliadosRoute: typeof AfiliadosRoute
   ContatoRoute: typeof ContatoRoute
   OfertasRoute: typeof OfertasRoute
@@ -272,12 +284,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiImportOfferRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminLoginRoute: typeof AdminLoginRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminLoginRoute: AdminLoginRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AfiliadosRoute: AfiliadosRoute,
   ContatoRoute: ContatoRoute,
   OfertasRoute: OfertasRoute,
