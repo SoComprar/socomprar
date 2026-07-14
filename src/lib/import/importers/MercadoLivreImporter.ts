@@ -16,73 +16,52 @@ function extractItemId(url: URL): string | null {
 function parsePriceText(value: string | null | undefined): number | null {
   if (!value) return null;
 
-  // Substitui palavras textuais comuns no aria-label do Mercado Livre para evitar quebras no parseFloat
-  const sanitized = value
+  // 1. Limpeza inicial de textos informativos do Mercado Livre
+  let sanitized = value
     .replace(/antes:/gi, "")
+    .replace(/anterior:/gi, "")
     .replace(/reais/gi, "")
-    .replace(/centavos/gi, ".");
+    .replace(/centavos/gi, "")
+    .replace(/[^0-9,.-]/g, "") // Mantém apenas números e pontuações
+    .trim();
 
-  const compact = sanitized
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/[^0-9,.-]/g, " ")
-    .trim()
-    .replace(/\s+/g, "");
+  if (!sanitized) return null;
 
-  if (!compact) return null;
-
-  const lastComma = compact.lastIndexOf(",");
-  const lastDot = compact.lastIndexOf(".");
-  const hasBothSeparators = lastComma > -1 && lastDot > -1;
-
-  let normalized: string;
-  if (hasBothSeparators) {
-    const decimalSeparator = lastComma > lastDot ? "," : ".";
-    const thousandSeparator = decimalSeparator === "," ? "." : ",";
-    normalized = compact.replaceAll(thousandSeparator, "").replace(decimalSeparator, ".");
-  } else if (lastComma > -1) {
-    const parts = compact.split(",");
-    if (parts.length > 2) {
-      normalized = compact.replace(/,/g, ".");
-    } else if (parts[1]?.length === 3) {
-      normalized = compact.replace(/,/g, "");
-    } else {
-      normalized = compact.replace(",", ".");
-    }
-  } else if (lastDot > -1) {
-    const parts = compact.split(".");
-    if (parts.length > 2) {
-      normalized = compact.replace(/\./g, "");
-    } else if (parts[1]?.length === 3) {
-      normalized = compact.replace(/\./g, "");
-    } else {
-      normalized = compact;
+  // 2. Se o valor veio com vírgula ou ponto separando decimais (ex: 299,90)
+  if (sanitized.includes(",") || sanitized.includes(".")) {
+    if (sanitized.includes(",") && sanitized.includes(".")) {
+      sanitized = sanitized.replace(/\./g, "").replace(",", ".");
+    } else if (sanitized.includes(",")) {
+      sanitized = sanitized.replace(",", ".");
     }
   } else {
-    normalized = compact;
+    // 3. CASO DO PRINT: Se veio tudo colado sem separador (ex: "29990")
+    // Como os centavos no Mercado Livre sempre têm 2 dígitos, inserimos o ponto antes deles
+    if (sanitized.length > 2) {
+      const integerPart = sanitized.slice(0, -2);
+      const decimalPart = sanitized.slice(-2);
+      sanitized = `${integerPart}.${decimalPart}`;
+    }
   }
 
-  const parsed = Number.parseFloat(normalized);
+  const parsed = Number.parseFloat(sanitized);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
 function extractOldPriceFromHtml(html: string): number | null {
-  // 1. Tenta extrair diretamente do atributo 'aria-label' da classe ui-pdp-price__original-value (Estrutura exata enviada)
-  const ariaLabelMatch = html.match(
+  // ESTRATÉGIA ULTRA-RESILIENTE: Captura qualquer tag <s> ou <del> que possua aria-label.
+  // Evita a quebra caso o Mercado Livre troque ou remova as classes CSS de preço.
+  const patterns = [
+    /<(?:s|del)\b[^>]*aria-label=["']([^"']+)["']/i,
     /class=["'][^"']*ui-pdp-price__original-value[^"']*["'][^>]*aria-label=["']([^"']+)["']/i
-  );
-  if (ariaLabelMatch?.[1]) {
-    const price = parsePriceText(ariaLabelMatch[1]);
-    if (price !== null) return price;
-  }
+  ];
 
-  // 2. Fallback caso o valor esteja apenas na tag interna de fração
-  const fractionMatch = html.match(
-    /class=["'][^"']*ui-pdp-price__original-value[^"']*["'][^>]*>[\s\S]*?class=["'][^"']*andes-money-amount__fraction[^"']*["'][^>]*>([^<]+)</i
-  );
-  if (fractionMatch?.[1]) {
-    const price = parsePriceText(fractionMatch[1]);
-    if (price !== null) return price;
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match?.[1]) {
+      const price = parsePriceText(match[1]);
+      if (price !== null) return price;
+    }
   }
 
   return null;
@@ -100,7 +79,7 @@ function injectOldPriceIntoJsonLd(html: string, oldPrice: number): string {
       const rawJson = match[1].trim();
       const jsonObj = JSON.parse(rawJson);
 
-      // Injeta de forma limpa no JSON-LD nativo preservando o preço ATUAL
+      // Intercepta e injeta de forma limpa no JSON-LD original preservando o preço atual e estoque nativos
       if (jsonObj["@type"] === "Product" || jsonObj["@graph"]) {
         const targetProduct = jsonObj["@graph"] 
           ? jsonObj["@graph"].find((item: any) => item["@type"] === "Product")
@@ -110,7 +89,7 @@ function injectOldPriceIntoJsonLd(html: string, oldPrice: number): string {
           if (!targetProduct.offers) {
             targetProduct.offers = { "@type": "Offer" };
           }
-          // injeta o preço antigo sem remover os dados do preço atual
+          // Injeta o preço antigo preservando as outras propriedades da oferta
           targetProduct.offers.highPrice = oldPrice;
           
           const newScriptBlock = `<script type="application/ld+json">${JSON.stringify(jsonObj)}</script>`;
@@ -120,11 +99,11 @@ function injectOldPriceIntoJsonLd(html: string, oldPrice: number): string {
         }
       }
     } catch {
-      // Ignora blocos JSON corrompidos ou mal formatados
+      // Ignora blocos com JSON quebrado
     }
   }
 
-  // Se o Mercado Livre não enviou um JSON-LD válido, cria uma tag isolada no head de fallback de forma segura
+  // Fallback seguro se não houver um bloco estruturado nativo
   if (!modified) {
     const fallbackProduct = {
       "@context": "https://schema.org",

@@ -30,22 +30,22 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
   };
 
   return (
-    <article className="card-elevated group flex flex-col overflow-hidden">
+    <article className="card-elevated group flex flex-col overflow-hidden bg-background">
       <Link
         to="/oferta/$slug"
         params={{ slug: offer.slug }}
-        className="relative block aspect-square overflow-hidden bg-secondary"
+        className="relative block aspect-square overflow-hidden bg-white p-4"
       >
         <img
           src={offer.image_url}
           alt={offer.title}
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
         />
-        <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-xs font-bold text-brand-foreground shadow-md">
+        <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-xs font-bold text-brand-foreground shadow-mdZone z-10">
           -{pct}%
         </span>
-        <span className="absolute right-3 top-3 rounded-full bg-background/95 px-2.5 py-1 text-[11px] font-semibold text-primary">
+        <span className="absolute right-3 top-3 rounded-full bg-background/95 px-2.5 py-1 text-[11px] font-semibold text-primary shadow-sm z-10">
           {offer.marketplace}
         </span>
       </Link>
