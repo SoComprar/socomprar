@@ -5,7 +5,7 @@ import { fetchHtml, SOCIAL_PREVIEW_USER_AGENT } from "../utils/fetchHtml";
 function parsePrice(value: number | string | null | undefined): number | null {
   if (value === undefined || value === null) return null;
   const parsed = typeof value === "number" ? value : Number.parseFloat(value);
-  
+
   if (!Number.isFinite(parsed)) return null;
 
   // Ajuste de escala da Shopee (transforma 10990000 em 109.90 se necessário)
@@ -24,7 +24,7 @@ function extractShopeePrices(html: string): { price: number | null; oldPrice: nu
     /<meta[^>]+(?:property|name)=["']product:price:amount["'][^>]*content=["']([^"']*)["']/i,
     /<meta[^>]+content=["']([^"']*)["'][^>]*(?:property|name)=["']product:price:amount["']/i,
     /twitter:data1["'][^>]*content=["']([^"']*)["']/i, // Padrão alternativo do Twitter Card
-    /"price"\s*:\s*(\d+)/
+    /"price"\s*:\s*(\d+)/,
   ];
 
   for (const pattern of pricePatterns) {
@@ -38,7 +38,7 @@ function extractShopeePrices(html: string): { price: number | null; oldPrice: nu
   // 2. CAPTURA DE PREÇO ANTIGO (Busca direta sem depender de estrutura complexa)
   const oldPricePatterns = [
     /"price_before_discount"\s*:\s*(\d+)/,
-    /priceBeforeDiscount["']\s*:\s*(\d+)/
+    /priceBeforeDiscount["']\s*:\s*(\d+)/,
   ];
 
   for (const pattern of oldPricePatterns) {
@@ -52,18 +52,22 @@ function extractShopeePrices(html: string): { price: number | null; oldPrice: nu
   return { price, oldPrice };
 }
 
-function injectPricesIntoJsonLd(html: string, price: number | null, oldPrice: number | null): string {
+function injectPricesIntoJsonLd(
+  html: string,
+  price: number | null,
+  oldPrice: number | null,
+): string {
   if (!price && !oldPrice) return html;
 
   // Constrói um objeto Schema padrão para interceptação do seu JsonLdParser
   const product = {
     "@context": "https://schema.org",
     "@type": "Product",
-    "offers": {
+    offers: {
       "@type": "Offer",
-      ...(price ? { "price": price, "priceCurrency": "BRL" } : {}),
-      ...(oldPrice ? { "highPrice": oldPrice } : {})
-    }
+      ...(price ? { price: price, priceCurrency: "BRL" } : {}),
+      ...(oldPrice ? { highPrice: oldPrice } : {}),
+    },
   };
 
   const jsonLdBlock = `<script type="application/ld+json">${JSON.stringify(product)}</script>`;
@@ -87,7 +91,7 @@ export class ShopeeImporter implements Importer {
 
     if (htmlResult.format === "html") {
       const { price, oldPrice } = extractShopeePrices(htmlResult.content);
-      
+
       return {
         content: injectPricesIntoJsonLd(htmlResult.content, price, oldPrice),
         format: "html",

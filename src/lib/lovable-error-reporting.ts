@@ -11,7 +11,6 @@ type LovableEvents = {
     options?: LovableErrorOptions,
   ) => void;
 };
-
 declare global {
   interface Window {
     __lovableEvents?: LovableEvents;

@@ -9,6 +9,9 @@ import { Logo } from "@/components/Logo";
 import { signIn, getSession } from "@/lib/auth";
 
 export const Route = createFileRoute("/admin/login")({
+  // Mesmo motivo do admin.index.tsx: a sessão só existe no navegador,
+  // então essa checagem não pode rodar no servidor (SSR).
+  ssr: false,
   // Se o usuário já estiver logado e tentar entrar no login, joga ele pro painel
   beforeLoad: async () => {
     const session = await getSession();

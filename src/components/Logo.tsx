@@ -2,7 +2,10 @@ export function Logo({ className = "" }: { className?: string }) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary shadow-[0_6px_16px_-6px_var(--brand)]">
-        <span className="text-brand-foreground text-lg font-black leading-none" style={{ color: "var(--brand)" }}>
+        <span
+          className="text-brand-foreground text-lg font-black leading-none"
+          style={{ color: "var(--brand)" }}
+        >
           Só
         </span>
       </div>

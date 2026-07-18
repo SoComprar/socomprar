@@ -85,19 +85,45 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "theme-color", content: "#0A2C6D" },
       { property: "og:site_name", content: "SóComprar" },
-      { property: "og:title", content: "SóComprar — Ofertas todos os dias na Amazon, Magalu e Shopee" },
+      {
+        property: "og:title",
+        content: "SóComprar — Ofertas todos os dias na Amazon, Magalu e Shopee",
+      },
       {
         property: "og:description",
         content: "A gente pesquisa as melhores ofertas para você economizar tempo e dinheiro.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "SóComprar — Ofertas todos os dias na Amazon, Magalu e Shopee" },
-      { name: "description", content: "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza." },
-      { property: "og:description", content: "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza." },
-      { name: "twitter:description", content: "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3aeee50e-cb91-4a8a-9ba1-e034e4381856/id-preview-7340cdfa--f5d9bf97-10c9-4cc2-a4d7-19011732cd08.lovable.app-1783212707648.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3aeee50e-cb91-4a8a-9ba1-e034e4381856/id-preview-7340cdfa--f5d9bf97-10c9-4cc2-a4d7-19011732cd08.lovable.app-1783212707648.png" },
+      {
+        name: "twitter:title",
+        content: "SóComprar — Ofertas todos os dias na Amazon, Magalu e Shopee",
+      },
+      {
+        name: "description",
+        content:
+          "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza.",
+      },
+      {
+        property: "og:description",
+        content:
+          "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3aeee50e-cb91-4a8a-9ba1-e034e4381856/id-preview-7340cdfa--f5d9bf97-10c9-4cc2-a4d7-19011732cd08.lovable.app-1783212707648.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3aeee50e-cb91-4a8a-9ba1-e034e4381856/id-preview-7340cdfa--f5d9bf97-10c9-4cc2-a4d7-19011732cd08.lovable.app-1783212707648.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

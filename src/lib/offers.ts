@@ -3,12 +3,7 @@
 // - src/lib/offers.service.ts (leitura pública)
 // - src/lib/offers.admin.service.ts (cadastro/edição/exclusão)
 
-export type Marketplace =
-  | "Amazon"
-  | "Mercado Livre"
-  | "Magalu"
-  | "Shopee"
-  | "AliExpress";
+export type Marketplace = "Amazon" | "Mercado Livre" | "Magalu" | "Shopee" | "AliExpress";
 
 export type Category = {
   id: string;

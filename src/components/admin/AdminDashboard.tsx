@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ShieldCheck, Trash2 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { ShieldCheck, Trash2, LogOut } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,9 +15,11 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { formatPrice } from "@/lib/offers";
 import { OfferForm } from "./OfferForm";
 import { deleteOffer, fetchOffersForAdmin } from "@/lib/offers.admin.service";
+import { signOut } from "@/lib/auth";
 
 export function AdminDashboard() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const offersQuery = useQuery({
     queryKey: ["adminOffers"],
     queryFn: fetchOffersForAdmin,
@@ -37,6 +40,11 @@ export function AdminDashboard() {
     deleteMutation.mutate(id);
   };
 
+  const handleLogout = async () => {
+    await signOut();
+    navigate({ to: "/admin/login" });
+  };
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
       <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
@@ -46,9 +54,15 @@ export function AdminDashboard() {
             Cadastre e gerencie ofertas no Supabase.
           </p>
         </div>
-        <div className="flex items-center gap-2 self-start rounded-full border border-border bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground sm:self-auto">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          {isSupabaseConfigured ? "Supabase conectado" : "Supabase não configurado"}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {isSupabaseConfigured ? "Supabase conectado" : "Supabase não configurado"}
+          </div>
+          <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1.5">
+            <LogOut className="h-3.5 w-3.5" />
+            Sair
+          </Button>
         </div>
       </header>
 

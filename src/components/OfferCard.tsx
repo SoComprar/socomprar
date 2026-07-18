@@ -1,32 +1,43 @@
 import { Link } from "@tanstack/react-router";
-import { Share2, Copy, ArrowRight, Check } from "lucide-react";
+import { Share2, Copy, ArrowRight, Check, Instagram } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { type OfferWithCategory, formatPrice, discount } from "@/lib/offers";
-import { getAbsoluteUrl } from "@/lib/site";
+import { getAbsoluteUrl, getShareLinks } from "@/lib/site";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function OfferCard({ offer }: { offer: OfferWithCategory }) {
   const [copied, setCopied] = useState(false);
   const pct = discount(offer.current_price, offer.old_price);
   const offerUrl = getAbsoluteUrl(`/oferta/${offer.slug}`);
+  const shareLinks = getShareLinks(offerUrl, offer.title);
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(offerUrl);
       setCopied(true);
+      toast.success("Link copiado!");
       setTimeout(() => setCopied(false), 1600);
     } catch {
-      // Clipboard indisponível (permissão negada ou navegador sem suporte); ignora silenciosamente.
+      toast.error("Não foi possível copiar o link.");
     }
   };
 
-  const share = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: offer.title, url: offerUrl });
-      } catch {
-        // Compartilhamento cancelado pelo usuário ou indisponível; ignora silenciosamente.
-      }
-    } else copy();
+  // Instagram não tem compartilhamento direto de link. Copia o link e tenta
+  // abrir o app (Instagram Direct), igual já é feito na página da oferta.
+  const shareInstagram = async () => {
+    try {
+      await navigator.clipboard.writeText(offerUrl);
+      toast.success("Link copiado! Cole no Instagram (bio, stories ou direct).");
+    } catch {
+      toast.error("Não foi possível copiar o link.");
+    }
+    window.open("instagram://direct", "_blank");
   };
 
   return (
@@ -76,24 +87,59 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
           >
             Comprar <ArrowRight className="h-3.5 w-3.5" />
           </Link>
-          <button
-            onClick={share}
-            aria-label="Compartilhar"
-            className="grid h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground hover:text-primary"
-          >
-            <Share2 className="h-4 w-4" />
-          </button>
-          <button
-            onClick={copy}
-            aria-label="Copiar link"
-            className="grid h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground hover:text-primary"
-          >
-            {copied ? (
-              <Check className="h-4 w-4 text-[color:var(--success)]" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label="Compartilhar"
+                className="grid h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground hover:text-primary"
+              >
+                <Share2 className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <a
+                  href={shareLinks.whatsapp}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="cursor-pointer"
+                >
+                  WhatsApp
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a
+                  href={shareLinks.telegram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="cursor-pointer"
+                >
+                  Telegram
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a
+                  href={shareLinks.facebook}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="cursor-pointer"
+                >
+                  Facebook
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={shareInstagram} className="cursor-pointer">
+                <Instagram className="mr-2 h-3.5 w-3.5" /> Instagram
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={copy} className="cursor-pointer">
+                {copied ? (
+                  <Check className="mr-2 h-3.5 w-3.5 text-[color:var(--success)]" />
+                ) : (
+                  <Copy className="mr-2 h-3.5 w-3.5" />
+                )}
+                Copiar link
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </article>

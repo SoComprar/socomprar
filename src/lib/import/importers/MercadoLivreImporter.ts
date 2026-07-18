@@ -53,7 +53,7 @@ function extractOldPriceFromHtml(html: string): number | null {
   // Evita a quebra caso o Mercado Livre troque ou remova as classes CSS de preço.
   const patterns = [
     /<(?:s|del)\b[^>]*aria-label=["']([^"']+)["']/i,
-    /class=["'][^"']*ui-pdp-price__original-value[^"']*["'][^>]*aria-label=["']([^"']+)["']/i
+    /class=["'][^"']*ui-pdp-price__original-value[^"']*["'][^>]*aria-label=["']([^"']+)["']/i,
   ];
 
   for (const pattern of patterns) {
@@ -81,8 +81,8 @@ function injectOldPriceIntoJsonLd(html: string, oldPrice: number): string {
 
       // Intercepta e injeta de forma limpa no JSON-LD original preservando o preço atual e estoque nativos
       if (jsonObj["@type"] === "Product" || jsonObj["@graph"]) {
-        const targetProduct = jsonObj["@graph"] 
-          ? jsonObj["@graph"].find((item: any) => item["@type"] === "Product")
+        const targetProduct = jsonObj["@graph"]
+          ? jsonObj["@graph"].find((item: Record<string, unknown>) => item["@type"] === "Product")
           : jsonObj;
 
         if (targetProduct) {
@@ -91,7 +91,7 @@ function injectOldPriceIntoJsonLd(html: string, oldPrice: number): string {
           }
           // Injeta o preço antigo preservando as outras propriedades da oferta
           targetProduct.offers.highPrice = oldPrice;
-          
+
           const newScriptBlock = `<script type="application/ld+json">${JSON.stringify(jsonObj)}</script>`;
           updatedHtml = updatedHtml.replace(match[0], newScriptBlock);
           modified = true;
@@ -108,10 +108,10 @@ function injectOldPriceIntoJsonLd(html: string, oldPrice: number): string {
     const fallbackProduct = {
       "@context": "https://schema.org",
       "@type": "Product",
-      "offers": {
+      offers: {
         "@type": "Offer",
-        "highPrice": oldPrice
-      }
+        highPrice: oldPrice,
+      },
     };
     const jsonLdBlock = `<script type="application/ld+json">${JSON.stringify(fallbackProduct)}</script>`;
     const headMatch = html.match(/<head[^>]*>/i);

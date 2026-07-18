@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PageShell } from "@/components/PageShell";
-import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { getAbsoluteUrl } from "@/lib/site";
 
+// Este arquivo agora é só o "molde" da área /admin.
+// Quem decide o que aparece de fato (painel ou tela de login)
+// são as rotas filhas: admin.index.tsx e admin.login.tsx.
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
@@ -17,13 +18,5 @@ export const Route = createFileRoute("/admin")({
     ],
     links: [{ rel: "canonical", href: getAbsoluteUrl("/admin") }],
   }),
-  component: AdminPage,
+  component: () => <Outlet />,
 });
-
-function AdminPage() {
-  return (
-    <PageShell>
-      <AdminDashboard />
-    </PageShell>
-  );
-}

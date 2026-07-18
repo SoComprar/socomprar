@@ -19,6 +19,7 @@ import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as AfiliadosRouteImport } from './routes/afiliados'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as OfertaSlugRouteImport } from './routes/oferta.$slug'
 import { Route as ApiImportOfferRouteImport } from './routes/api.import-offer'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
@@ -73,6 +74,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const OfertaSlugRoute = OfertaSlugRouteImport.update({
   id: '/oferta/$slug',
   path: '/oferta/$slug',
@@ -103,10 +109,10 @@ export interface FileRoutesByFullPath {
   '/admin/login': typeof AdminLoginRoute
   '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/afiliados': typeof AfiliadosRoute
   '/contato': typeof ContatoRoute
   '/ofertas': typeof OfertasRoute
@@ -118,6 +124,7 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +141,7 @@ export interface FileRoutesById {
   '/admin/login': typeof AdminLoginRoute
   '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,10 +159,10 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/api/import-offer'
     | '/oferta/$slug'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/afiliados'
     | '/contato'
     | '/ofertas'
@@ -166,6 +174,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/api/import-offer'
     | '/oferta/$slug'
+    | '/admin'
   id:
     | '__root__'
     | '/'
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/api/import-offer'
     | '/oferta/$slug'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -270,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/oferta/$slug': {
       id: '/oferta/$slug'
       path: '/oferta/$slug'
@@ -296,10 +313,12 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminLoginRoute: AdminLoginRoute,
+  AdminIndexRoute: AdminIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

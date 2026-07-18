@@ -1,7 +1,15 @@
 import type { ReactNode } from "react";
 import { PageShell } from "./PageShell";
 
-export function Article({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+export function Article({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
   return (
     <PageShell>
       <article className="mx-auto max-w-3xl px-4 py-14">
