@@ -1,0 +1,1534 @@
+diff --git a/0002-import-status-block-detection-ml-api(1).patch b/0002-import-status-block-detection-ml-api(1).patch
+deleted file mode 100644
+index a323489..0000000
+--- a/0002-import-status-block-detection-ml-api(1).patch
++++ /dev/null
+@@ -1,695 +0,0 @@
+-diff --git a/src/lib/import/ImportService.ts b/src/lib/import/ImportService.ts
+-index 99a2029..4735f83 100644
+---- a/src/lib/import/ImportService.ts
+-+++ b/src/lib/import/ImportService.ts
+-@@ -1,4 +1,5 @@
+- import { detectMarketplace } from "./detectors/detectMarketplace";
+-+import { detectBlockPage } from "./detectors/detectBlockPage";
+- import { AmazonImporter } from "./importers/AmazonImporter";
+- import { MercadoLivreImporter } from "./importers/MercadoLivreImporter";
+- import { MagaluImporter } from "./importers/MagaluImporter";
+-@@ -8,12 +9,24 @@ import { GenericImporter } from "./importers/GenericImporter";
+- import { parseJsonLd } from "./parsers/JsonLdParser";
+- import { parseOpenGraph } from "./parsers/OpenGraphParser";
+- import { parseHtml } from "./parsers/HtmlParser";
+-+import { parseMercadoLivreApi } from "./parsers/MercadoLivreApiParser";
+- import { normalizePrice } from "./normalizers/normalizePrice";
+- import { normalizeTitle } from "./normalizers/normalizeTitle";
+- import { normalizeDescription } from "./normalizers/normalizeDescription";
+- import { normalizeImage } from "./normalizers/normalizeImage";
+- import { normalizeSlug } from "./normalizers/normalizeSlug";
+--import type { Enricher, ImportedOfferData, Importer, RawParsedData } from "./types";
+-+import type {
+-+  ConfidenceScore,
+-+  Enricher,
+-+  FetchFormat,
+-+  FetchResult,
+-+  ImportedOfferData,
+-+  ImportMeta,
+-+  Importer,
+-+  ImportStatus,
+-+  Marketplace,
+-+  RawParsedData,
+-+} from "./types";
+- 
+- // Ordem de tentativa: importadores específicos primeiro, GenericImporter por
+- // último (seu supports() sempre retorna true).
+-@@ -26,11 +39,21 @@ const SPECIFIC_IMPORTERS: Importer[] = [
+- ];
+- const GENERIC_IMPORTER = new GenericImporter();
+- 
+-+// O ImportService escolhe a cadeia de parsers pelo "format" que o Importer
+-+// devolveu - nunca por um `if` checando o nome do marketplace. Se amanhã a
+-+// Kabum também ganhar uma API dedicada, basta o KabumImporter devolver
+-+// format: "api-json" e registrar o parser dela aqui.
+-+const PARSERS_BY_FORMAT: Record<FetchFormat, Array<(content: string) => RawParsedData | null>> = {
+-+  "api-json": [parseMercadoLivreApi],
+-+  html: [parseJsonLd, parseOpenGraph, parseHtml],
+-+};
+-+
+- // Confiança (0-100) por método de extração. category fica sempre 0: nenhuma
+- // camada hoje tenta inferir categoria - o campo já existe pronto para quando
+- // isso for implementado.
+- const CONFIDENCE_BY_METHOD: Record<RawParsedData["method"], { data: number; description: number }> =
+-   {
+-+    "api-json": { data: 100, description: 95 },
+-     jsonld: { data: 100, description: 90 },
+-     opengraph: { data: 80, description: 70 },
+-     html: { data: 50, description: 50 },
+-@@ -45,6 +68,68 @@ export type ImportServiceOptions = {
+-   enrich?: Enricher;
+- };
+- 
+-+function runParsers(fetchResult: FetchResult): RawParsedData | null {
+-+  const parsers = PARSERS_BY_FORMAT[fetchResult.format];
+-+  for (const parser of parsers) {
+-+    const result = parser(fetchResult.content);
+-+    if (result) return result;
+-+  }
+-+  return null;
+-+}
+-+
+-+function buildMeta(url: URL, marketplace: Marketplace | null, importMethod: string): ImportMeta {
+-+  return {
+-+    sourceUrl: url.toString(),
+-+    sourceMarketplace: marketplace,
+-+    importMethod,
+-+    importedAt: new Date().toISOString(),
+-+    lastChecked: null,
+-+  };
+-+}
+-+
+-+// Calcula status + mensagem a partir dos dados já normalizados - nunca de
+-+// heurística solta em outro lugar. Ordem de prioridade: bloqueio detectado >
+-+// nenhum dado útil (unsupported/failed, dependendo se reconhecemos o
+-+// marketplace) > combinação completa (SUCCESS) > combinação parcial
+-+// (PARTIAL).
+-+function computeStatus(
+-+  data: Pick<ImportedOfferData, "title" | "imageUrl" | "currentPrice" | "marketplace">,
+-+  blocked: boolean,
+-+): { status: ImportStatus; message: string } {
+-+  if (blocked) {
+-+    return {
+-+      status: "BLOCKED",
+-+      message:
+-+        "Essa página retornou uma verificação anti-robô (captcha/bloqueio). Preencha manualmente.",
+-+    };
+-+  }
+-+
+-+  const gotAnything = Boolean(data.title || data.imageUrl || data.currentPrice);
+-+
+-+  if (!gotAnything) {
+-+    return data.marketplace
+-+      ? {
+-+          status: "FAILED",
+-+          message: "Não encontramos nenhum dado nessa página. Preencha manualmente.",
+-+        }
+-+      : {
+-+          status: "UNSUPPORTED",
+-+          message:
+-+            "Não reconhecemos esse site como um marketplace suportado. Preencha manualmente.",
+-+        };
+-+  }
+-+
+-+  const isComplete = Boolean(data.title && data.imageUrl && data.marketplace && data.currentPrice);
+-+  if (isComplete) {
+-+    return { status: "SUCCESS", message: "Importação concluída." };
+-+  }
+-+
+-+  return {
+-+    status: "PARTIAL",
+-+    message: "Importação parcial - alguns campos não foram encontrados. Confira antes de salvar.",
+-+  };
+-+}
+-+
+- export class ImportService {
+-   private readonly enrich: Enricher;
+- 
+-@@ -56,41 +141,82 @@ export class ImportService {
+-     const url = new URL(rawUrl);
+-     const marketplace = detectMarketplace(url);
+- 
+--    const importer =
+--      SPECIFIC_IMPORTERS.find((candidate) => candidate.supports(url)) ?? GENERIC_IMPORTER;
+--    const html = await importer.fetch(url);
+--
+--    const parsed: RawParsedData = parseJsonLd(html) ??
+--      parseOpenGraph(html) ??
+--      parseHtml(html) ?? { method: "html" };
+--    const confidenceLevel = CONFIDENCE_BY_METHOD[parsed.method];
+--
+--    const normalized: ImportedOfferData = {
+--      title: normalizeTitle(parsed.title),
+--      description: normalizeDescription(parsed.description),
+--      imageUrl: normalizeImage(parsed.imageUrl, url),
+--      currentPrice: normalizePrice(parsed.price),
+--      oldPrice: normalizePrice(parsed.oldPrice),
+--      marketplace,
+--      slug: normalizeSlug(parsed.title),
+--      confidence: {
+--        title: parsed.title ? confidenceLevel.data : 0,
+--        description: parsed.description ? confidenceLevel.description : 0,
+--        imageUrl: parsed.imageUrl ? confidenceLevel.data : 0,
+--        currentPrice: parsed.price !== undefined ? confidenceLevel.data : 0,
+--        oldPrice: parsed.oldPrice !== undefined ? confidenceLevel.data : 0,
+--        marketplace: marketplace ? 100 : 0,
+--        category: 0,
+--      },
+--      meta: {
+--        sourceUrl: url.toString(),
+--        sourceMarketplace: marketplace,
+--        importMethod: parsed.method,
+--        importedAt: new Date().toISOString(),
+--        lastChecked: null,
+--      },
+--    };
+-+    try {
+-+      const importer =
+-+        SPECIFIC_IMPORTERS.find((candidate) => candidate.supports(url)) ?? GENERIC_IMPORTER;
+-+      const fetchResult = await importer.fetch(url);
+-+
+-+      const blocked = fetchResult.format === "html" && detectBlockPage(fetchResult.content);
+-+      const parsed: RawParsedData | null = blocked ? null : runParsers(fetchResult);
+-+
+-+      const confidenceLevel = parsed ? CONFIDENCE_BY_METHOD[parsed.method] : null;
+-+
+-+      const normalized: Omit<ImportedOfferData, "status" | "message"> = {
+-+        title: normalizeTitle(parsed?.title),
+-+        description: normalizeDescription(parsed?.description),
+-+        imageUrl: normalizeImage(parsed?.imageUrl, url),
+-+        currentPrice: normalizePrice(parsed?.price),
+-+        oldPrice: normalizePrice(parsed?.oldPrice),
+-+        marketplace,
+-+        slug: normalizeSlug(parsed?.title),
+-+        confidence: buildConfidence(parsed, confidenceLevel, marketplace),
+-+        meta: buildMeta(url, marketplace, parsed?.method ?? (blocked ? "blocked" : "none")),
+-+      };
+- 
+--    return this.enrich(normalized);
+-+      const { status, message } = computeStatus(normalized, blocked);
+-+
+-+      return this.enrich({ ...normalized, status, message });
+-+    } catch (error) {
+-+      const message = error instanceof Error ? error.message : "Erro desconhecido ao importar.";
+-+      return this.enrich({
+-+        title: null,
+-+        description: null,
+-+        imageUrl: null,
+-+        currentPrice: null,
+-+        oldPrice: null,
+-+        marketplace,
+-+        slug: null,
+-+        confidence: {
+-+          title: 0,
+-+          description: 0,
+-+          imageUrl: 0,
+-+          currentPrice: 0,
+-+          oldPrice: 0,
+-+          marketplace: 0,
+-+          category: 0,
+-+        },
+-+        meta: buildMeta(url, marketplace, "error"),
+-+        status: "FAILED",
+-+        message: `Não foi possível acessar essa URL (${message}). Preencha manualmente.`,
+-+      });
+-+    }
+-   }
+- }
+-+
+-+function buildConfidence(
+-+  parsed: RawParsedData | null,
+-+  level: { data: number; description: number } | null,
+-+  marketplace: Marketplace | null,
+-+): ConfidenceScore {
+-+  if (!parsed || !level) {
+-+    return {
+-+      title: 0,
+-+      description: 0,
+-+      imageUrl: 0,
+-+      currentPrice: 0,
+-+      oldPrice: 0,
+-+      marketplace: marketplace ? 100 : 0,
+-+      category: 0,
+-+    };
+-+  }
+-+
+-+  return {
+-+    title: parsed.title ? level.data : 0,
+-+    description: parsed.description ? level.description : 0,
+-+    imageUrl: parsed.imageUrl ? level.data : 0,
+-+    currentPrice: parsed.price !== undefined ? level.data : 0,
+-+    oldPrice: parsed.oldPrice !== undefined ? level.data : 0,
+-+    marketplace: marketplace ? 100 : 0,
+-+    category: 0,
+-+  };
+-+}
+-diff --git a/src/lib/import/detectors/detectBlockPage.ts b/src/lib/import/detectors/detectBlockPage.ts
+-new file mode 100644
+-index 0000000..522afb6
+---- /dev/null
+-+++ b/src/lib/import/detectors/detectBlockPage.ts
+-@@ -0,0 +1,52 @@
+-+import { MARKETPLACE_HOSTNAME_RULES } from "../utils/marketplace";
+-+
+-+// Nomes genéricos que costumam aparecer no <title> de uma página de
+-+// bloqueio/verificação, em vez do nome real do produto. Reaproveita os nomes
+-+// de marketplace já cadastrados em utils/marketplace.ts.
+-+const GENERIC_SITE_NAMES = MARKETPLACE_HOSTNAME_RULES.map((rule) => rule.marketplace.toLowerCase());
+-+
+-+const BLOCK_PAGE_PHRASES = [
+-+  "captcha",
+-+  "verifique que você não é um robô",
+-+  "not a robot",
+-+  "acesso negado",
+-+  "access denied",
+-+  "robot check",
+-+  "unusual traffic",
+-+];
+-+
+-+// Responsabilidade única: decidir se um HTML buscado é uma página de
+-+// bloqueio/captcha/interstitial em vez do conteúdo real do produto.
+-+// Reutilizável por qualquer Importer baseado em HTML (Amazon, Magalu, Kabum,
+-+// Shopee, Genérico) - não sabe nada sobre normalização nem sobre o
+-+// marketplace específico além dos nomes genéricos que já eram públicos.
+-+export function detectBlockPage(html: string): boolean {
+-+  const normalized = html.toLowerCase();
+-+
+-+  if (BLOCK_PAGE_PHRASES.some((phrase) => normalized.includes(phrase))) {
+-+    return true;
+-+  }
+-+
+-+  const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+-+  const title = titleMatch?.[1]?.trim().toLowerCase();
+-+
+-+  // Página real de produto quase nunca tem como <title> só o nome do site.
+-+  // Página de bloqueio, com frequência, tem exatamente isso.
+-+  if (
+-+    title &&
+-+    GENERIC_SITE_NAMES.some((name) => title === name || title.startsWith(`${name}.com`))
+-+  ) {
+-+    return true;
+-+  }
+-+
+-+  // HTML suspeito curto, sem nenhum sinal de dado estruturado de produto.
+-+  const looksEmpty =
+-+    html.length < 2000 &&
+-+    !normalized.includes("application/ld+json") &&
+-+    !normalized.includes("og:title");
+-+  if (looksEmpty) {
+-+    return true;
+-+  }
+-+
+-+  return false;
+-+}
+-diff --git a/src/lib/import/importers/AmazonImporter.ts b/src/lib/import/importers/AmazonImporter.ts
+-index d0639fc..05af731 100644
+---- a/src/lib/import/importers/AmazonImporter.ts
+-+++ b/src/lib/import/importers/AmazonImporter.ts
+-@@ -1,4 +1,4 @@
+--import type { Importer } from "../types";
+-+import type { FetchResult, Importer } from "../types";
+- import { hostnameMatches } from "../utils/marketplace";
+- import { fetchHtml } from "../utils/fetchHtml";
+- 
+-@@ -9,7 +9,7 @@ export class AmazonImporter implements Importer {
+-     return hostnameMatches(url, "Amazon");
+-   }
+- 
+--  fetch(url: URL): Promise<string> {
+-+  fetch(url: URL): Promise<FetchResult> {
+-     return fetchHtml(url);
+-   }
+- }
+-diff --git a/src/lib/import/importers/GenericImporter.ts b/src/lib/import/importers/GenericImporter.ts
+-index 021e407..ce4ceed 100644
+---- a/src/lib/import/importers/GenericImporter.ts
+-+++ b/src/lib/import/importers/GenericImporter.ts
+-@@ -1,4 +1,4 @@
+--import type { Importer } from "../types";
+-+import type { FetchResult, Importer } from "../types";
+- import { fetchHtml } from "../utils/fetchHtml";
+- 
+- // Fallback: busca o HTML bruto de qualquer URL, quando nenhum importador
+-@@ -9,7 +9,7 @@ export class GenericImporter implements Importer {
+-     return true;
+-   }
+- 
+--  fetch(url: URL): Promise<string> {
+-+  fetch(url: URL): Promise<FetchResult> {
+-     return fetchHtml(url);
+-   }
+- }
+-diff --git a/src/lib/import/importers/KabumImporter.ts b/src/lib/import/importers/KabumImporter.ts
+-index a4cfa12..decb50f 100644
+---- a/src/lib/import/importers/KabumImporter.ts
+-+++ b/src/lib/import/importers/KabumImporter.ts
+-@@ -1,4 +1,4 @@
+--import type { Importer } from "../types";
+-+import type { FetchResult, Importer } from "../types";
+- import { hostnameMatches } from "../utils/marketplace";
+- import { fetchHtml } from "../utils/fetchHtml";
+- 
+-@@ -15,7 +15,7 @@ export class KabumImporter implements Importer {
+-     return hostnameMatches(url, "Kabum");
+-   }
+- 
+--  fetch(url: URL): Promise<string> {
+-+  fetch(url: URL): Promise<FetchResult> {
+-     return fetchHtml(url);
+-   }
+- }
+-diff --git a/src/lib/import/importers/MagaluImporter.ts b/src/lib/import/importers/MagaluImporter.ts
+-index bf0f6e4..ce97eaa 100644
+---- a/src/lib/import/importers/MagaluImporter.ts
+-+++ b/src/lib/import/importers/MagaluImporter.ts
+-@@ -1,4 +1,4 @@
+--import type { Importer } from "../types";
+-+import type { FetchResult, Importer } from "../types";
+- import { hostnameMatches } from "../utils/marketplace";
+- import { fetchHtml } from "../utils/fetchHtml";
+- 
+-@@ -9,7 +9,7 @@ export class MagaluImporter implements Importer {
+-     return hostnameMatches(url, "Magalu");
+-   }
+- 
+--  fetch(url: URL): Promise<string> {
+-+  fetch(url: URL): Promise<FetchResult> {
+-     return fetchHtml(url);
+-   }
+- }
+-diff --git a/src/lib/import/importers/MercadoLivreImporter.ts b/src/lib/import/importers/MercadoLivreImporter.ts
+-index ccdd007..2f078b2 100644
+---- a/src/lib/import/importers/MercadoLivreImporter.ts
+-+++ b/src/lib/import/importers/MercadoLivreImporter.ts
+-@@ -1,15 +1,45 @@
+--import type { Importer } from "../types";
+-+import type { FetchResult, Importer } from "../types";
+- import { hostnameMatches } from "../utils/marketplace";
+--import { fetchHtml } from "../utils/fetchHtml";
+-+import { fetchJson } from "../utils/fetchJson";
+- 
+--// Responsabilidade única: buscar o HTML bruto de uma página do Mercado Livre.
+--// Nunca interpreta o conteúdo - isso é responsabilidade dos Parsers.
+-+// Extrai o ID do item (ex: MLB51973565) de qualquer formato de URL do
+-+// Mercado Livre - página de catálogo (/p/MLB...), anúncio individual
+-+// (/nome-do-produto/MLB-1234567890-...) ou variações com hífen no meio do
+-+// código.
+-+function extractItemId(url: URL): string | null {
+-+  const match = url.toString().match(/\b([A-Z]{3})-?(\d{6,})\b/i);
+-+  if (!match) return null;
+-+  return `${match[1].toUpperCase()}${match[2]}`;
+-+}
+-+
+-+// Responsabilidade única: buscar os dados brutos de um produto do Mercado
+-+// Livre através da API pública oficial deles (api.mercadolibre.com) - não
+-+// busca nem interpreta o HTML da página do produto. A página HTML do
+-+// Mercado Livre proíbe acesso automatizado (robots.txt) e não é confiável
+-+// para scraping; a API é o caminho documentado e suportado por eles para
+-+// esse tipo de consulta.
+-+//
+-+// Nunca interpreta o conteúdo devolvido - isso é responsabilidade do
+-+// MercadoLivreApiParser.
+- export class MercadoLivreImporter implements Importer {
+-   supports(url: URL): boolean {
+-     return hostnameMatches(url, "Mercado Livre");
+-   }
+- 
+--  fetch(url: URL): Promise<string> {
+--    return fetchHtml(url);
+-+  async fetch(url: URL): Promise<FetchResult> {
+-+    const itemId = extractItemId(url);
+-+    if (!itemId) {
+-+      throw new Error("Não foi possível identificar o ID do produto na URL do Mercado Livre.");
+-+    }
+-+
+-+    const [item, description] = await Promise.all([
+-+      fetchJson(`https://api.mercadolibre.com/items/${itemId}`),
+-+      fetchJson(`https://api.mercadolibre.com/items/${itemId}/description`).catch(() => null),
+-+    ]);
+-+
+-+    return {
+-+      content: JSON.stringify({ item, description }),
+-+      format: "api-json",
+-+    };
+-   }
+- }
+-diff --git a/src/lib/import/importers/ShopeeImporter.ts b/src/lib/import/importers/ShopeeImporter.ts
+-index 9c01b05..6ef53ab 100644
+---- a/src/lib/import/importers/ShopeeImporter.ts
+-+++ b/src/lib/import/importers/ShopeeImporter.ts
+-@@ -1,4 +1,4 @@
+--import type { Importer } from "../types";
+-+import type { FetchResult, Importer } from "../types";
+- import { hostnameMatches } from "../utils/marketplace";
+- import { fetchHtml } from "../utils/fetchHtml";
+- 
+-@@ -15,7 +15,7 @@ export class ShopeeImporter implements Importer {
+-     return hostnameMatches(url, "Shopee");
+-   }
+- 
+--  fetch(url: URL): Promise<string> {
+-+  fetch(url: URL): Promise<FetchResult> {
+-     return fetchHtml(url);
+-   }
+- }
+-diff --git a/src/lib/import/parsers/MercadoLivreApiParser.ts b/src/lib/import/parsers/MercadoLivreApiParser.ts
+-new file mode 100644
+-index 0000000..37651e3
+---- /dev/null
+-+++ b/src/lib/import/parsers/MercadoLivreApiParser.ts
+-@@ -0,0 +1,50 @@
+-+import type { RawParsedData } from "../types";
+-+
+-+// Formato mínimo que nos interessa da resposta de GET /items/{id} da API do
+-+// Mercado Livre. A API devolve muito mais campos - só tipamos o que usamos.
+-+type MercadoLivreItem = {
+-+  title?: string;
+-+  price?: number;
+-+  original_price?: number | null;
+-+  pictures?: Array<{ secure_url?: string; url?: string }>;
+-+};
+-+
+-+// Formato mínimo de GET /items/{id}/description.
+-+type MercadoLivreDescription = {
+-+  plain_text?: string;
+-+  text?: string;
+-+};
+-+
+-+type MercadoLivreApiPayload = {
+-+  item?: MercadoLivreItem;
+-+  description?: MercadoLivreDescription;
+-+};
+-+
+-+// Entende o JSON combinado (item + description) que o MercadoLivreImporter
+-+// monta a partir da API oficial do Mercado Livre. Responsabilidade única:
+-+// interpretar esse formato específico - não sabe nada sobre HTML, nem faz
+-+// fetch, nem normaliza valores.
+-+export function parseMercadoLivreApi(content: string): RawParsedData | null {
+-+  let parsed: MercadoLivreApiPayload;
+-+
+-+  try {
+-+    parsed = JSON.parse(content);
+-+  } catch {
+-+    return null;
+-+  }
+-+
+-+  const item = parsed.item;
+-+  if (!item || typeof item.title !== "string") return null;
+-+
+-+  const image = item.pictures?.[0]?.secure_url ?? item.pictures?.[0]?.url;
+-+  const description = parsed.description?.plain_text ?? parsed.description?.text;
+-+
+-+  return {
+-+    title: item.title,
+-+    description: typeof description === "string" ? description : undefined,
+-+    imageUrl: typeof image === "string" ? image : undefined,
+-+    price: typeof item.price === "number" ? item.price : undefined,
+-+    oldPrice: typeof item.original_price === "number" ? item.original_price : undefined,
+-+    method: "api-json",
+-+  };
+-+}
+-diff --git a/src/lib/import/types.ts b/src/lib/import/types.ts
+-index 80f815e..5f47c80 100644
+---- a/src/lib/import/types.ts
+-+++ b/src/lib/import/types.ts
+-@@ -26,6 +26,11 @@ export type ImportMeta = {
+-   lastChecked: string | null;
+- };
+- 
+-+// Resultado da tentativa de importação, para o front-end decidir como orientar
+-+// o usuário (nunca inferido a partir de heurística solta - sempre calculado
+-+// explicitamente pelo ImportService a partir dos dados normalizados).
+-+export type ImportStatus = "SUCCESS" | "PARTIAL" | "BLOCKED" | "UNSUPPORTED" | "FAILED";
+-+
+- // Resultado final entregue ao chamador (hoje, a rota /api/import-offer).
+- export type ImportedOfferData = {
+-   title: string | null;
+-@@ -37,24 +42,39 @@ export type ImportedOfferData = {
+-   slug: string | null;
+-   confidence: ConfidenceScore;
+-   meta: ImportMeta;
+-+  status: ImportStatus;
+-+  message: string;
+- };
+- 
+- // Dados estruturados brutos, extraídos por um Parser, antes da normalização.
+- // Um Parser nunca limpa/formata valores — isso é responsabilidade dos Normalizers.
+-+// "api-json" é o método de uma API oficial de marketplace (ex: Mercado Livre);
+-+// os demais vêm de HTML buscado bruto.
+- export type RawParsedData = {
+-   title?: string;
+-   description?: string;
+-   imageUrl?: string;
+-   price?: number;
+-   oldPrice?: number;
+--  method: "jsonld" | "opengraph" | "html";
+-+  method: "jsonld" | "opengraph" | "html" | "api-json";
+-+};
+-+
+-+// O que um Importer devolve: o conteúdo bruto (HTML ou JSON de uma API, como
+-+// texto) e o formato desse conteúdo. O ImportService usa "format" para
+-+// escolher a cadeia de parsers certa - nenhuma camada precisa de um `if`
+-+// checando o nome do marketplace.
+-+export type FetchFormat = "html" | "api-json";
+-+
+-+export type FetchResult = {
+-+  content: string;
+-+  format: FetchFormat;
+- };
+- 
+- // Interface única que todo Importer deve implementar. Um Importer SÓ busca o
+--// HTML bruto do seu marketplace — nunca interpreta o conteúdo.
+-+// conteúdo bruto do seu marketplace — nunca interpreta/limpa o conteúdo.
+- export interface Importer {
+-   supports(url: URL): boolean;
+--  fetch(url: URL): Promise<string>;
+-+  fetch(url: URL): Promise<FetchResult>;
+- }
+- 
+- // Ponto de extensão: no futuro, uma etapa de IA pode ser injetada aqui, entre os
+-diff --git a/src/lib/import/utils/fetchHtml.ts b/src/lib/import/utils/fetchHtml.ts
+-index 47d032f..fa5e161 100644
+---- a/src/lib/import/utils/fetchHtml.ts
+-+++ b/src/lib/import/utils/fetchHtml.ts
+-@@ -1,13 +1,19 @@
+--// Helper de baixo nível compartilhado por todos os Importers: busca o HTML
+--// bruto de uma URL, com timeout e um User-Agent de navegador comum (aumenta a
+--// chance de não ser bloqueado por proteção anti-bot). Não interpreta o
+--// conteúdo — isso é responsabilidade dos Parsers.
+-+import type { FetchResult } from "../types";
+-+
+-+// Helper de baixo nível compartilhado por todos os Importers baseados em
+-+// HTML: busca o conteúdo bruto de uma URL, com timeout e um User-Agent de
+-+// navegador comum (aumenta a chance de não ser bloqueado por proteção
+-+// anti-bot). Não interpreta o conteúdo — isso é responsabilidade dos
+-+// Parsers.
+- 
+- const DEFAULT_TIMEOUT_MS = 8000;
+- const USER_AGENT =
+-   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+- 
+--export async function fetchHtml(url: URL, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<string> {
+-+export async function fetchHtml(
+-+  url: URL,
+-+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+-+): Promise<FetchResult> {
+-   const controller = new AbortController();
+-   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+- 
+-@@ -24,7 +30,8 @@ export async function fetchHtml(url: URL, timeoutMs: number = DEFAULT_TIMEOUT_MS
+-       throw new Error(`status ${response.status}`);
+-     }
+- 
+--    return await response.text();
+-+    const content = await response.text();
+-+    return { content, format: "html" };
+-   } finally {
+-     clearTimeout(timeout);
+-   }
+-diff --git a/src/lib/import/utils/fetchJson.ts b/src/lib/import/utils/fetchJson.ts
+-new file mode 100644
+-index 0000000..c84a8a6
+---- /dev/null
+-+++ b/src/lib/import/utils/fetchJson.ts
+-@@ -0,0 +1,28 @@
+-+// Helper de baixo nível para chamadas a APIs JSON oficiais (ex: Mercado
+-+// Livre). Só busca e faz o parse do JSON - a interpretação do formato
+-+// específico de cada API é responsabilidade dos Parsers, não deste helper.
+-+
+-+const DEFAULT_TIMEOUT_MS = 8000;
+-+
+-+export async function fetchJson(
+-+  url: string,
+-+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+-+): Promise<unknown> {
+-+  const controller = new AbortController();
+-+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+-+
+-+  try {
+-+    const response = await fetch(url, {
+-+      signal: controller.signal,
+-+      headers: { Accept: "application/json" },
+-+    });
+-+
+-+    if (!response.ok) {
+-+      throw new Error(`status ${response.status}`);
+-+    }
+-+
+-+    return await response.json();
+-+  } finally {
+-+    clearTimeout(timeout);
+-+  }
+-+}
+-diff --git a/src/routes/api.import-offer.ts b/src/routes/api.import-offer.ts
+-index 97dd27c..3e8c2db 100644
+---- a/src/routes/api.import-offer.ts
+-+++ b/src/routes/api.import-offer.ts
+-@@ -6,6 +6,13 @@ import { ImportService } from "@/lib/import";
+- // Esta rota só recebe a URL, chama o ImportService e devolve a resposta.
+- const importService = new ImportService();
+- 
+-+// Status que ainda valem a pena preencher o formulário mesmo que
+-+// parcialmente. Os demais (BLOCKED, UNSUPPORTED, FAILED) viram ok:false,
+-+// preservando o contrato atual que o OfferForm.tsx já entende (ele só olha
+-+// para "ok"; "data.status"/"data.message" ficam disponíveis para quando o
+-+// front-end for atualizado para exibir esses avisos com mais detalhe).
+-+const USABLE_STATUSES = new Set(["SUCCESS", "PARTIAL"]);
+-+
+- export const Route = createFileRoute("/api/import-offer")({
+-   server: {
+-     handlers: {
+-@@ -19,29 +26,13 @@ export const Route = createFileRoute("/api/import-offer")({
+-           return Response.json({ ok: false, error: "URL inválida." }, { status: 400 });
+-         }
+- 
+--        try {
+--          const data = await importService.importOffer(targetUrl);
+--
+--          const gotAnything =
+--            data.title ||
+--            data.description ||
+--            data.imageUrl ||
+--            data.currentPrice ||
+--            data.marketplace;
+--          if (!gotAnything) {
+--            return Response.json(
+--              { ok: false, error: "Não encontramos dados nessa página. Preencha manualmente." },
+--              { status: 200 },
+--            );
+--          }
+-+        const data = await importService.importOffer(targetUrl);
+- 
+--          return Response.json({ ok: true, data });
+--        } catch {
+--          return Response.json(
+--            { ok: false, error: "Não foi possível acessar essa URL. Preencha manualmente." },
+--            { status: 200 },
+--          );
+-+        if (!USABLE_STATUSES.has(data.status)) {
+-+          return Response.json({ ok: false, error: data.message, data }, { status: 200 });
+-         }
+-+
+-+        return Response.json({ ok: true, data });
+-       },
+-     },
+-   },
+diff --git a/0004-whatsapp-preview-fallback.patch b/0004-whatsapp-preview-fallback.patch
+deleted file mode 100644
+index 6c371ea..0000000
+--- a/0004-whatsapp-preview-fallback.patch
++++ /dev/null
+@@ -1,127 +0,0 @@
+-diff --git a/src/lib/import/importers/MercadoLivreImporter.ts b/src/lib/import/importers/MercadoLivreImporter.ts
+-index 2f078b2..8baae69 100644
+---- a/src/lib/import/importers/MercadoLivreImporter.ts
+-+++ b/src/lib/import/importers/MercadoLivreImporter.ts
+-@@ -1,6 +1,7 @@
+- import type { FetchResult, Importer } from "../types";
+- import { hostnameMatches } from "../utils/marketplace";
+- import { fetchJson } from "../utils/fetchJson";
+-+import { fetchHtml, SOCIAL_PREVIEW_USER_AGENT } from "../utils/fetchHtml";
+- 
+- // Extrai o ID do item (ex: MLB51973565) de qualquer formato de URL do
+- // Mercado Livre - página de catálogo (/p/MLB...), anúncio individual
+-@@ -13,14 +14,19 @@ function extractItemId(url: URL): string | null {
+- }
+- 
+- // Responsabilidade única: buscar os dados brutos de um produto do Mercado
+--// Livre através da API pública oficial deles (api.mercadolibre.com) - não
+--// busca nem interpreta o HTML da página do produto. A página HTML do
+--// Mercado Livre proíbe acesso automatizado (robots.txt) e não é confiável
+--// para scraping; a API é o caminho documentado e suportado por eles para
+--// esse tipo de consulta.
+-+// Livre. Nunca interpreta o conteúdo devolvido - isso é responsabilidade dos
+-+// Parsers (MercadoLivreApiParser para a API, JsonLd/OpenGraph/Html para o
+-+// fallback).
+- //
+--// Nunca interpreta o conteúdo devolvido - isso é responsabilidade do
+--// MercadoLivreApiParser.
+-+// Estratégia em duas etapas:
+-+// 1) Tenta a API pública oficial deles (api.mercadolibre.com). É o caminho
+-+//    documentado e mais confiável, quando funciona.
+-+// 2) Se a API falhar (ex: exige autenticação que ainda não implementamos),
+-+//    cai para buscar a própria página do produto, mas se identificando como
+-+//    o robô de preview do WhatsApp (SOCIAL_PREVIEW_USER_AGENT) - o Mercado
+-+//    Livre libera esse tipo de acesso de propósito, mesmo bloqueando
+-+//    scrapers genéricos, porque é assim que o preview do link funciona
+-+//    quando alguém compartilha o produto no WhatsApp/Facebook/Telegram.
+- export class MercadoLivreImporter implements Importer {
+-   supports(url: URL): boolean {
+-     return hostnameMatches(url, "Mercado Livre");
+-@@ -28,18 +34,24 @@ export class MercadoLivreImporter implements Importer {
+- 
+-   async fetch(url: URL): Promise<FetchResult> {
+-     const itemId = extractItemId(url);
+--    if (!itemId) {
+--      throw new Error("Não foi possível identificar o ID do produto na URL do Mercado Livre.");
+--    }
+- 
+--    const [item, description] = await Promise.all([
+--      fetchJson(`https://api.mercadolibre.com/items/${itemId}`),
+--      fetchJson(`https://api.mercadolibre.com/items/${itemId}/description`).catch(() => null),
+--    ]);
+-+    if (itemId) {
+-+      try {
+-+        const [item, description] = await Promise.all([
+-+          fetchJson(`https://api.mercadolibre.com/items/${itemId}`),
+-+          fetchJson(`https://api.mercadolibre.com/items/${itemId}/description`).catch(() => null),
+-+        ]);
+-+
+-+        return {
+-+          content: JSON.stringify({ item, description }),
+-+          format: "api-json",
+-+        };
+-+      } catch {
+-+        // API oficial indisponível/bloqueada para esta chamada - segue para
+-+        // o fallback de HTML abaixo, em vez de falhar de vez.
+-+      }
+-+    }
+- 
+--    return {
+--      content: JSON.stringify({ item, description }),
+--      format: "api-json",
+--    };
+-+    return fetchHtml(url, { userAgent: SOCIAL_PREVIEW_USER_AGENT });
+-   }
+- }
+-diff --git a/src/lib/import/utils/fetchHtml.ts b/src/lib/import/utils/fetchHtml.ts
+-index fa5e161..f3cc34c 100644
+---- a/src/lib/import/utils/fetchHtml.ts
+-+++ b/src/lib/import/utils/fetchHtml.ts
+-@@ -1,19 +1,30 @@
+- import type { FetchResult } from "../types";
+- 
+- // Helper de baixo nível compartilhado por todos os Importers baseados em
+--// HTML: busca o conteúdo bruto de uma URL, com timeout e um User-Agent de
+--// navegador comum (aumenta a chance de não ser bloqueado por proteção
+--// anti-bot). Não interpreta o conteúdo — isso é responsabilidade dos
+-+// HTML: busca o conteúdo bruto de uma URL, com timeout e um User-Agent
+-+// configurável. Não interpreta o conteúdo — isso é responsabilidade dos
+- // Parsers.
+- 
+- const DEFAULT_TIMEOUT_MS = 8000;
+--const USER_AGENT =
+-+
+-+const BROWSER_USER_AGENT =
+-   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+- 
+--export async function fetchHtml(
+--  url: URL,
+--  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+--): Promise<FetchResult> {
+-+// Muitos sites de e-commerce bloqueiam scrapers genéricos, mas liberam de
+-+// propósito os robôs de preview de link do WhatsApp/Facebook/Telegram -
+-+// afinal, é do interesse do próprio site que o preview (foto, título, preço)
+-+// apareça bonito quando alguém compartilha o produto. Usado como fallback
+-+// quando o acesso normal (ou uma API oficial) é bloqueado.
+-+export const SOCIAL_PREVIEW_USER_AGENT = "WhatsApp/2.23.20.0 A";
+-+
+-+export type FetchHtmlOptions = {
+-+  timeoutMs?: number;
+-+  userAgent?: string;
+-+};
+-+
+-+export async function fetchHtml(url: URL, options: FetchHtmlOptions = {}): Promise<FetchResult> {
+-+  const { timeoutMs = DEFAULT_TIMEOUT_MS, userAgent = BROWSER_USER_AGENT } = options;
+-+
+-   const controller = new AbortController();
+-   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+- 
+-@@ -21,7 +32,7 @@ export async function fetchHtml(
+-     const response = await fetch(url.toString(), {
+-       signal: controller.signal,
+-       headers: {
+--        "User-Agent": USER_AGENT,
+-+        "User-Agent": userAgent,
+-         Accept: "text/html,application/xhtml+xml",
+-       },
+-     });
+diff --git a/0006-sprint4-ux-mobile.patch b/0006-sprint4-ux-mobile.patch
+deleted file mode 100644
+index 8d71281..0000000
+--- a/0006-sprint4-ux-mobile.patch
++++ /dev/null
+@@ -1,355 +0,0 @@
+-diff --git a/src/components/admin/AdminDashboard.tsx b/src/components/admin/AdminDashboard.tsx
+-index 0edf264..62c07da 100644
+---- a/src/components/admin/AdminDashboard.tsx
+-+++ b/src/components/admin/AdminDashboard.tsx
+-@@ -1,8 +1,15 @@
+- import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+--import { Database, Sparkles, ShieldCheck, Trash2 } from "lucide-react";
+-+import { ShieldCheck, Trash2 } from "lucide-react";
+- import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+- import { Button } from "@/components/ui/button";
+--import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+-+import {
+-+  Table,
+-+  TableBody,
+-+  TableCell,
+-+  TableHead,
+-+  TableHeader,
+-+  TableRow,
+-+} from "@/components/ui/table";
+- import { isSupabaseConfigured } from "@/lib/supabase";
+- import { formatPrice } from "@/lib/offers";
+- import { OfferForm } from "./OfferForm";
+-@@ -31,85 +38,21 @@ export function AdminDashboard() {
+-   };
+- 
+-   return (
+--    <div className="mx-auto max-w-6xl px-4 py-10">
+--      <header className="mb-8 rounded-3xl border border-border bg-card p-8 shadow-sm">
+--        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+--          <div>
+--            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+--              Área administrativa
+--            </p>
+--            <h1 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl">
+--              Painel de gestão de ofertas
+--            </h1>
+--            <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
+--              Cadastre e remova ofertas diretamente na tabela <span className="font-semibold">offers</span> do Supabase.
+--            </p>
+--          </div>
+--
+--          <div className="grid gap-2 rounded-3xl border border-border bg-secondary/70 p-4 text-sm text-foreground shadow-sm sm:text-base">
+--            <div className="flex items-center justify-between gap-3">
+--              <span className="font-medium">Status do Supabase</span>
+--              <span className={isSupabaseConfigured ? "text-success" : "text-destructive"}>
+--                {isSupabaseConfigured ? "Configurado" : "Não configurado"}
+--              </span>
+--            </div>
+--            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+--              <ShieldCheck className="h-4 w-4" />
+--              {isSupabaseConfigured
+--                ? "Preparado para inserções e exclusões no banco"
+--                : "Defina as variáveis de ambiente no .env"}
+--            </div>
+--          </div>
+--        </div>
+--      </header>
+--
+--      <div className="grid gap-4 md:grid-cols-3">
+--        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+--          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+--            <Sparkles className="h-5 w-5" />
+--          </div>
+--          <p className="text-sm font-semibold text-muted-foreground">Cadastro rápido</p>
+--          <p className="mt-3 text-2xl font-extrabold text-foreground">Ofertas</p>
+--          <p className="mt-2 text-sm text-muted-foreground">
+--            Use o formulário para registrar promoções em tempo real no Supabase.
+-+    <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
+-+      <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+-+        <div>
+-+          <h1 className="text-2xl font-extrabold text-primary sm:text-3xl">Painel de ofertas</h1>
+-+          <p className="mt-1 text-sm text-muted-foreground">
+-+            Cadastre e gerencie ofertas no Supabase.
+-           </p>
+-         </div>
+--
+--        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+--          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/50 text-foreground">
+--            <Database className="h-5 w-5" />
+--          </div>
+--          <p className="text-sm font-semibold text-muted-foreground">Tabela</p>
+--          <p className="mt-3 text-2xl font-extrabold text-foreground">offers</p>
+--          <p className="mt-2 text-sm text-muted-foreground">
+--            Os registros criados aqui serão enviados diretamente para a tabela de ofertas.
+--          </p>
+-+        <div className="flex items-center gap-2 self-start rounded-full border border-border bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground sm:self-auto">
+-+          <ShieldCheck className="h-3.5 w-3.5" />
+-+          {isSupabaseConfigured ? "Supabase conectado" : "Supabase não configurado"}
+-         </div>
+-+      </header>
+- 
+--        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+--          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/40 text-foreground">
+--            <ShieldCheck className="h-5 w-5" />
+--          </div>
+--          <p className="text-sm font-semibold text-muted-foreground">Infra</p>
+--          <p className="mt-3 text-2xl font-extrabold text-foreground">Seguro</p>
+--          <p className="mt-2 text-sm text-muted-foreground">
+--            O painel funciona sem alterar as páginas públicas ou o layout existente.
+--          </p>
+--        </div>
+--      </div>
+--
+--      <section className="mt-10 rounded-3xl border border-border bg-card p-8 shadow-sm">
+--        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+--          <div>
+--            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+--              Nova oferta
+--            </p>
+--            <h2 className="mt-3 text-2xl font-extrabold text-primary">Cadastro de ofertas</h2>
+--            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+--              Preencha os dados abaixo para enviar uma oferta ao Supabase.
+--            </p>
+--          </div>
+--        </div>
+-+      <section className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-8">
+-         <OfferForm onSuccess={handleOfferCreated} />
+-       </section>
+- 
+-@@ -124,7 +67,10 @@ export function AdminDashboard() {
+-               Apague registros diretamente da tabela de ofertas.
+-             </p>
+-           </div>
+--          <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["adminOffers"] })}>
+-+          <Button
+-+            variant="outline"
+-+            onClick={() => queryClient.invalidateQueries({ queryKey: ["adminOffers"] })}
+-+          >
+-             Atualizar lista
+-           </Button>
+-         </div>
+-@@ -132,14 +78,22 @@ export function AdminDashboard() {
+-         {offersQuery.isError ? (
+-           <Alert variant="destructive">
+-             <AlertTitle>Erro ao carregar ofertas</AlertTitle>
+--            <AlertDescription>{offersQuery.error instanceof Error ? offersQuery.error.message : "Erro desconhecido."}</AlertDescription>
+-+            <AlertDescription>
+-+              {offersQuery.error instanceof Error
+-+                ? offersQuery.error.message
+-+                : "Erro desconhecido."}
+-+            </AlertDescription>
+-           </Alert>
+-         ) : null}
+- 
+-         {deleteMutation.isError ? (
+-           <Alert variant="destructive">
+-             <AlertTitle>Erro ao excluir oferta</AlertTitle>
+--            <AlertDescription>{deleteMutation.error instanceof Error ? deleteMutation.error.message : "Erro desconhecido."}</AlertDescription>
+-+            <AlertDescription>
+-+              {deleteMutation.error instanceof Error
+-+                ? deleteMutation.error.message
+-+                : "Erro desconhecido."}
+-+            </AlertDescription>
+-           </Alert>
+-         ) : null}
+- 
+-diff --git a/src/components/admin/OfferForm.tsx b/src/components/admin/OfferForm.tsx
+-index 8c6ef6a..952e9bd 100644
+---- a/src/components/admin/OfferForm.tsx
+-+++ b/src/components/admin/OfferForm.tsx
+-@@ -236,7 +236,7 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
+-         ) : null}
+-       </div>
+- 
+--      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
+-+      <form id="offer-form" onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
+-         <div className="grid gap-6 md:grid-cols-2">
+-           <div className="grid gap-2">
+-             <Label htmlFor="title">Título</Label>
+-@@ -400,16 +400,32 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
+-           />
+-         </div>
+- 
+--        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+-+        <div className="flex flex-col gap-3 pb-20 sm:flex-row sm:items-center sm:justify-between sm:pb-0">
+-           <p className="text-sm text-muted-foreground">
+-             Os dados serão enviados diretamente para a tabela{" "}
+-             <span className="font-semibold">offers</span>.
+-           </p>
+--          <Button type="submit" disabled={form.formState.isSubmitting}>
+-+          <Button
+-+            type="submit"
+-+            disabled={form.formState.isSubmitting}
+-+            className="hidden sm:inline-flex"
+-+          >
+-             Salvar oferta
+-           </Button>
+-         </div>
+-       </form>
+-+
+-+      {/* Botão fixo no rodapé, só no mobile - evita precisar rolar até o fim do formulário. */}
+-+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-md sm:hidden">
+-+        <Button
+-+          type="submit"
+-+          form="offer-form"
+-+          disabled={form.formState.isSubmitting}
+-+          className="w-full !py-3.5 text-base"
+-+        >
+-+          Salvar oferta
+-+        </Button>
+-+      </div>
+-     </div>
+-   );
+- }
+-diff --git a/src/routes/oferta.$slug.tsx b/src/routes/oferta.$slug.tsx
+-index 5d59e45..8ef81d0 100644
+---- a/src/routes/oferta.$slug.tsx
+-+++ b/src/routes/oferta.$slug.tsx
+-@@ -1,11 +1,20 @@
+- import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+--import { ExternalLink, ArrowLeft, Store, Calendar, Tag, Copy, Check } from "lucide-react";
+-+import {
+-+  ExternalLink,
+-+  ArrowLeft,
+-+  Store,
+-+  Calendar,
+-+  Tag,
+-+  Copy,
+-+  Check,
+-+  Instagram,
+-+  ChevronDown,
+-+} from "lucide-react";
+- import { useState } from "react";
+- import { PageShell } from "@/components/PageShell";
+- import { formatPrice, discount } from "@/lib/offers";
+- import { fetchOfferBySlug } from "@/lib/offers.service";
+- import { getAbsoluteUrl, getShareLinks, SITE_NAME } from "@/lib/site";
+--
+- export const Route = createFileRoute("/oferta/$slug")({
+-   loader: async ({ params }) => {
+-     const offer = await fetchOfferBySlug(params.slug);
+-@@ -82,8 +91,11 @@ function OfferPage() {
+-   const { offer } = Route.useLoaderData();
+-   const pct = discount(offer.current_price, offer.old_price);
+-   const [copied, setCopied] = useState(false);
+-+  const [descExpanded, setDescExpanded] = useState(false);
+-+  const [igMessage, setIgMessage] = useState<string | null>(null);
+-   const offerUrl = getAbsoluteUrl(`/oferta/${offer.slug}`);
+-   const shareLinks = getShareLinks(offerUrl, offer.title);
+-+  const isLongDescription = offer.description.length > 220;
+- 
+-   const copyLink = async () => {
+-     try {
+-@@ -95,6 +107,20 @@ function OfferPage() {
+-     }
+-   };
+- 
+-+  // Instagram não tem compartilhamento direto de link. Tenta abrir o app (via
+-+  // deep link do Instagram Direct); se não suportado, copia o link e avisa o
+-+  // usuário pra colar manualmente (ex: nos stories/bio).
+-+  const shareInstagram = async () => {
+-+    try {
+-+      await navigator.clipboard.writeText(offerUrl);
+-+      setIgMessage("Link copiado! Cole no Instagram (bio, stories ou direct).");
+-+    } catch {
+-+      setIgMessage("Não foi possível copiar o link automaticamente.");
+-+    }
+-+    window.open("instagram://direct", "_blank");
+-+    setTimeout(() => setIgMessage(null), 3200);
+-+  };
+-+
+-   return (
+-     <PageShell>
+-       <div className="mx-auto max-w-6xl px-4 py-8">
+-@@ -108,7 +134,11 @@ function OfferPage() {
+-         <div className="mt-6 grid gap-8 md:grid-cols-2">
+-           <div className="card-elevated overflow-hidden">
+-             <div className="relative aspect-square bg-secondary">
+--              <img src={offer.image_url} alt={offer.title} className="h-full w-full object-cover" />
+-+              <img
+-+                src={offer.image_url}
+-+                alt={offer.title}
+-+                className="h-full w-full object-contain p-4"
+-+              />
+-               <span className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-sm font-bold text-brand-foreground shadow-md">
+-                 -{pct}%
+-               </span>
+-@@ -148,7 +178,7 @@ function OfferPage() {
+-                 href={offer.affiliate_url}
+-                 target="_blank"
+-                 rel="noopener noreferrer sponsored"
+--                className="btn-brand mt-5 w-full !py-3.5 text-base"
+-+                className="btn-brand mt-5 hidden w-full !py-3.5 text-base sm:inline-flex"
+-               >
+-                 Comprar Agora <ExternalLink className="h-4 w-4" />
+-               </a>
+-@@ -200,6 +230,13 @@ function OfferPage() {
+-                       <path d="M21.944 4.667 18.6 20.42c-.253 1.113-.914 1.39-1.853.865l-5.12-3.774-2.47 2.377c-.273.273-.502.502-1.03.502l.368-5.226 9.51-8.593c.414-.368-.09-.573-.643-.205L6.19 12.99l-5.107-1.598c-1.11-.347-1.13-1.11.232-1.643L20.517 3.09c.925-.347 1.734.205 1.427 1.577z" />
+-                     </svg>
+-                   </a>
+-+                  <button
+-+                    onClick={shareInstagram}
+-+                    aria-label="Compartilhar no Instagram"
+-+                    className="grid h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground hover:text-primary"
+-+                  >
+-+                    <Instagram className="h-4 w-4" />
+-+                  </button>
+-                   <button
+-                     onClick={copyLink}
+-                     aria-label="Copiar link"
+-@@ -212,14 +249,33 @@ function OfferPage() {
+-                     )}
+-                   </button>
+-                 </div>
+-+                {igMessage ? (
+-+                  <p className="mt-2 text-xs text-muted-foreground">{igMessage}</p>
+-+                ) : null}
+-               </div>
+-             </div>
+- 
+-             <div className="mt-6">
+-               <h2 className="text-base font-semibold text-primary">Descrição</h2>
+--              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+-+              <p
+-+                className={`mt-2 text-sm leading-relaxed text-muted-foreground ${
+-+                  isLongDescription && !descExpanded ? "line-clamp-4" : ""
+-+                }`}
+-+              >
+-                 {offer.description}
+-               </p>
+-+              {isLongDescription ? (
+-+                <button
+-+                  onClick={() => setDescExpanded((v) => !v)}
+-+                  className="mt-1 inline-flex items-center gap-1 text-sm font-semibold"
+-+                  style={{ color: "var(--brand)" }}
+-+                >
+-+                  {descExpanded ? "Mostrar menos" : "Mostrar mais"}
+-+                  <ChevronDown
+-+                    className={`h-4 w-4 transition-transform ${descExpanded ? "rotate-180" : ""}`}
+-+                  />
+-+                </button>
+-+              ) : null}
+-             </div>
+- 
+-             <p className="mt-6 text-xs text-muted-foreground">
+-@@ -229,6 +285,19 @@ function OfferPage() {
+-           </div>
+-         </div>
+-       </div>
+-+
+-+      {/* Botão Comprar fixo no rodapé, só no mobile - some no desktop (onde o botão normal acima já é visível sem rolar). */}
+-+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-md sm:hidden">
+-+        <a
+-+          href={offer.affiliate_url}
+-+          target="_blank"
+-+          rel="noopener noreferrer sponsored"
+-+          className="btn-brand w-full !py-3.5 text-base"
+-+        >
+-+          Comprar Agora <ExternalLink className="h-4 w-4" />
+-+        </a>
+-+      </div>
+-+      <div className="h-20 sm:hidden" aria-hidden />
+-     </PageShell>
+-   );
+- }
+diff --git a/0008-admin-login-rls(1).patch b/0008-admin-login-rls(1).patch
+deleted file mode 100644
+index 6c2a84d..0000000
+--- a/0008-admin-login-rls(1).patch
++++ /dev/null
+@@ -1,333 +0,0 @@
+-diff --git a/src/components/admin/AdminDashboard.tsx b/src/components/admin/AdminDashboard.tsx
+-index 7a9e017..b305b3f 100644
+---- a/src/components/admin/AdminDashboard.tsx
+-+++ b/src/components/admin/AdminDashboard.tsx
+-@@ -1,6 +1,7 @@
+- import { useMemo, useState } from "react";
+-+import { useNavigate } from "@tanstack/react-router";
+- import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+--import { ShieldCheck, Trash2, Search } from "lucide-react";
+-+import { ShieldCheck, Trash2, Search, LogOut } from "lucide-react";
+- import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+- import { Button } from "@/components/ui/button";
+- import { Input } from "@/components/ui/input";
+-@@ -20,12 +21,14 @@ import {
+-   TableRow,
+- } from "@/components/ui/table";
+- import { isSupabaseConfigured } from "@/lib/supabase";
+-+import { signOut } from "@/lib/auth";
+- import { formatPrice } from "@/lib/offers";
+- import { OfferForm } from "./OfferForm";
+- import { deleteOffer, fetchOffersForAdmin } from "@/lib/offers.admin.service";
+- 
+- export function AdminDashboard() {
+-   const queryClient = useQueryClient();
+-+  const navigate = useNavigate();
+-   const offersQuery = useQuery({
+-     queryKey: ["adminOffers"],
+-     queryFn: fetchOffersForAdmin,
+-@@ -46,6 +49,11 @@ export function AdminDashboard() {
+-     deleteMutation.mutate(id);
+-   };
+- 
+-+  const handleLogout = async () => {
+-+    await signOut();
+-+    navigate({ to: "/admin/login" });
+-+  };
+-+
+-   const [search, setSearch] = useState("");
+-   const [marketplaceFilter, setMarketplaceFilter] = useState("todos");
+-   const [categoryFilter, setCategoryFilter] = useState("todas");
+-@@ -83,9 +91,14 @@ export function AdminDashboard() {
+-             Cadastre e gerencie ofertas no Supabase.
+-           </p>
+-         </div>
+--        <div className="flex items-center gap-2 self-start rounded-full border border-border bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground sm:self-auto">
+--          <ShieldCheck className="h-3.5 w-3.5" />
+--          {isSupabaseConfigured ? "Supabase conectado" : "Supabase não configurado"}
+-+        <div className="flex items-center gap-2 self-start sm:self-auto">
+-+          <div className="flex items-center gap-2 rounded-full border border-border bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground">
+-+            <ShieldCheck className="h-3.5 w-3.5" />
+-+            {isSupabaseConfigured ? "Supabase conectado" : "Supabase não configurado"}
+-+          </div>
+-+          <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1.5">
+-+            <LogOut className="h-3.5 w-3.5" /> Sair
+-+          </Button>
+-         </div>
+-       </header>
+- 
+-diff --git a/src/lib/auth.ts b/src/lib/auth.ts
+-new file mode 100644
+-index 0000000..43b5ab3
+---- /dev/null
+-+++ b/src/lib/auth.ts
+-@@ -0,0 +1,40 @@
+-+import { supabase, isSupabaseConfigured } from "./supabase";
+-+import type { Session } from "@supabase/supabase-js";
+-+
+-+function ensureSupabase() {
+-+  if (!isSupabaseConfigured || !supabase) {
+-+    throw new Error("Supabase não está configurado. Verifique as variáveis de ambiente.");
+-+  }
+-+  return supabase;
+-+}
+-+
+-+export async function signIn(email: string, password: string): Promise<void> {
+-+  const client = ensureSupabase();
+-+  const { error } = await client.auth.signInWithPassword({ email, password });
+-+  if (error) {
+-+    throw new Error(
+-+      error.message === "Invalid login credentials" ? "E-mail ou senha inválidos." : error.message,
+-+    );
+-+  }
+-+}
+-+
+-+export async function signOut(): Promise<void> {
+-+  const client = ensureSupabase();
+-+  await client.auth.signOut();
+-+}
+-+
+-+export async function getSession(): Promise<Session | null> {
+-+  if (!isSupabaseConfigured || !supabase) return null;
+-+  const { data } = await supabase.auth.getSession();
+-+  return data.session;
+-+}
+-+
+-+// Assina mudanças de sessão (login/logout em qualquer aba). Devolve uma
+-+// função pra cancelar a assinatura.
+-+export function onAuthChange(callback: (session: Session | null) => void): () => void {
+-+  if (!isSupabaseConfigured || !supabase) return () => {};
+-+  const {
+-+    data: { subscription },
+-+  } = supabase.auth.onAuthStateChange((_event, session) => callback(session));
+-+  return () => subscription.unsubscribe();
+-+}
+-diff --git a/src/lib/supabase.ts b/src/lib/supabase.ts
+-index 59619ac..0b1aa24 100644
+---- a/src/lib/supabase.ts
+-+++ b/src/lib/supabase.ts
+-@@ -8,8 +8,8 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+- export const supabase = isSupabaseConfigured
+-   ? createClient(supabaseUrl, supabaseAnonKey, {
+-       auth: {
+--        persistSession: false,
+--        autoRefreshToken: false,
+-+        persistSession: true,
+-+        autoRefreshToken: true,
+-       },
+-     })
+-   : null;
+-diff --git a/src/routes/admin.login.tsx b/src/routes/admin.login.tsx
+-new file mode 100644
+-index 0000000..403441f
+---- /dev/null
+-+++ b/src/routes/admin.login.tsx
+-@@ -0,0 +1,91 @@
+-+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+-+import { useState } from "react";
+-+import { Lock } from "lucide-react";
+-+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+-+import { Button } from "@/components/ui/button";
+-+import { Input } from "@/components/ui/input";
+-+import { Label } from "@/components/ui/label";
+-+import { Logo } from "@/components/Logo";
+-+import { signIn } from "@/lib/auth";
+-+import { getAbsoluteUrl } from "@/lib/site";
+-+
+-+export const Route = createFileRoute("/admin/login")({
+-+  head: () => ({
+-+    meta: [
+-+      { title: "Login — Admin — SóComprar" },
+-+      { name: "robots", content: "noindex" },
+-+      { property: "og:url", content: getAbsoluteUrl("/admin/login") },
+-+    ],
+-+  }),
+-+  component: AdminLoginPage,
+-+});
+-+
+-+function AdminLoginPage() {
+-+  const navigate = useNavigate();
+-+  const [email, setEmail] = useState("");
+-+  const [password, setPassword] = useState("");
+-+  const [error, setError] = useState<string | null>(null);
+-+  const [loading, setLoading] = useState(false);
+-+
+-+  const onSubmit = async (event: React.FormEvent) => {
+-+    event.preventDefault();
+-+    setError(null);
+-+    setLoading(true);
+-+    try {
+-+      await signIn(email, password);
+-+      navigate({ to: "/admin" });
+-+    } catch (err) {
+-+      setError(err instanceof Error ? err.message : "Erro ao entrar.");
+-+    } finally {
+-+      setLoading(false);
+-+    }
+-+  };
+-+
+-+  return (
+-+    <div className="grid min-h-screen place-items-center bg-secondary px-4">
+-+      <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-8 shadow-sm">
+-+        <div className="flex flex-col items-center gap-2 text-center">
+-+          <Logo />
+-+          <div className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+-+            <Lock className="h-3.5 w-3.5" /> Área administrativa
+-+          </div>
+-+        </div>
+-+
+-+        {error ? (
+-+          <Alert variant="destructive" className="mt-6">
+-+            <AlertTitle>Não foi possível entrar</AlertTitle>
+-+            <AlertDescription>{error}</AlertDescription>
+-+          </Alert>
+-+        ) : null}
+-+
+-+        <form onSubmit={onSubmit} className="mt-6 grid gap-4">
+-+          <div className="grid gap-2">
+-+            <Label htmlFor="email">E-mail</Label>
+-+            <Input
+-+              id="email"
+-+              type="email"
+-+              autoComplete="username"
+-+              required
+-+              value={email}
+-+              onChange={(e) => setEmail(e.target.value)}
+-+            />
+-+          </div>
+-+          <div className="grid gap-2">
+-+            <Label htmlFor="password">Senha</Label>
+-+            <Input
+-+              id="password"
+-+              type="password"
+-+              autoComplete="current-password"
+-+              required
+-+              value={password}
+-+              onChange={(e) => setPassword(e.target.value)}
+-+            />
+-+          </div>
+-+          <Button type="submit" disabled={loading} className="mt-2 w-full !py-3">
+-+            {loading ? "Entrando..." : "Entrar"}
+-+          </Button>
+-+        </form>
+-+      </div>
+-+    </div>
+-+  );
+-+}
+-diff --git a/src/routes/admin.tsx b/src/routes/admin.tsx
+-index ecee49e..3025252 100644
+---- a/src/routes/admin.tsx
+-+++ b/src/routes/admin.tsx
+-@@ -1,7 +1,9 @@
+--import { createFileRoute } from "@tanstack/react-router";
+-+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+-+import { useEffect, useState } from "react";
+- import { PageShell } from "@/components/PageShell";
+- import { AdminDashboard } from "@/components/admin/AdminDashboard";
+- import { getAbsoluteUrl } from "@/lib/site";
+-+import { getSession, onAuthChange } from "@/lib/auth";
+- 
+- export const Route = createFileRoute("/admin")({
+-   head: () => ({
+-@@ -21,6 +23,44 @@ export const Route = createFileRoute("/admin")({
+- });
+- 
+- function AdminPage() {
+-+  const navigate = useNavigate();
+-+  const [checked, setChecked] = useState(false);
+-+
+-+  // Checagem de sessão roda no navegador (a sessão do Supabase fica salva
+-+  // localmente) - por isso não dá pra proteger isso no servidor/SSR aqui.
+-+  // Enquanto verifica, mostra um estado de carregamento em vez do painel.
+-+  useEffect(() => {
+-+    let active = true;
+-+
+-+    getSession().then((session) => {
+-+      if (!active) return;
+-+      if (!session) {
+-+        navigate({ to: "/admin/login" });
+-+      } else {
+-+        setChecked(true);
+-+      }
+-+    });
+-+
+-+    const unsubscribe = onAuthChange((session) => {
+-+      if (!session) navigate({ to: "/admin/login" });
+-+    });
+-+
+-+    return () => {
+-+      active = false;
+-+      unsubscribe();
+-+    };
+-+  }, [navigate]);
+-+
+-+  if (!checked) {
+-+    return (
+-+      <PageShell>
+-+        <div className="grid min-h-[50vh] place-items-center text-sm text-muted-foreground">
+-+          Verificando sessão...
+-+        </div>
+-+      </PageShell>
+-+    );
+-+  }
+-+
+-   return (
+-     <PageShell>
+-       <AdminDashboard />
+-diff --git a/supabase/migrations/0003_admin_auth_rls.sql b/supabase/migrations/0003_admin_auth_rls.sql
+-new file mode 100644
+-index 0000000..8a52826
+---- /dev/null
+-+++ b/supabase/migrations/0003_admin_auth_rls.sql
+-@@ -0,0 +1,51 @@
+-+-- Migration: habilita RLS nas tabelas offers e categories, com políticas
+-+-- separando leitura pública (site) de leitura/escrita administrativa
+-+-- (painel, exige login). Sem isso, a chave pública (anon key) sozinha
+-+-- permite ler/escrever tudo, mesmo sem passar pela tela de login.
+-+--
+-+-- Rode este arquivo no SQL Editor do Supabase.
+-+
+-+alter table public.offers enable row level security;
+-+alter table public.categories enable row level security;
+-+
+-+-- Leitura pública: qualquer visitante do site só vê ofertas ATIVAS.
+-+create policy "public_read_active_offers" on public.offers
+-+  for select
+-+  using (active = true);
+-+
+-+-- Categorias sempre foram públicas (usadas nos filtros do site) - mantém.
+-+create policy "public_read_categories" on public.categories
+-+  for select
+-+  using (true);
+-+
+-+-- Leitura administrativa: usuário logado (painel admin) vê TODAS as ofertas,
+-+-- inclusive inativas/rascunho.
+-+create policy "admin_read_all_offers" on public.offers
+-+  for select
+-+  to authenticated
+-+  using (true);
+-+
+-+-- Escrita de ofertas: só usuário logado pode inserir, editar ou excluir.
+-+create policy "admin_insert_offers" on public.offers
+-+  for insert
+-+  to authenticated
+-+  with check (true);
+-+
+-+create policy "admin_update_offers" on public.offers
+-+  for update
+-+  to authenticated
+-+  using (true)
+-+  with check (true);
+-+
+-+create policy "admin_delete_offers" on public.offers
+-+  for delete
+-+  to authenticated
+-+  using (true);
+-+
+-+-- Escrita de categorias: só usuário logado (preparado para o painel gerenciar
+-+-- categorias no futuro; hoje elas só são lidas, não editadas pelo painel).
+-+create policy "admin_write_categories" on public.categories
+-+  for all
+-+  to authenticated
+-+  using (true)
+-+  with check (true);

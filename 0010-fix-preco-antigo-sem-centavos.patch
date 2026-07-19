@@ -1,0 +1,71 @@
+diff --git a/src/lib/import/importers/MercadoLivreImporter.ts b/src/lib/import/importers/MercadoLivreImporter.ts
+index 4444444..5555555 100644
+--- a/src/lib/import/importers/MercadoLivreImporter.ts
++++ b/src/lib/import/importers/MercadoLivreImporter.ts
+@@ -16,6 +16,15 @@
+ function parsePriceText(value: string | null | undefined): number | null {
+   if (!value) return null;
+ 
++  // O aria-label do Mercado Livre varia de formato dependendo do preço:
++  // - "Antes: 1.999 reais" (valor redondo, sem centavos)
++  // - "1999 reais e 90 centavos" (com centavos, por extenso)
++  // - "R$ 1.999,00" (já formatado)
++  // Guardamos essas duas pistas ANTES de limpar o texto, porque elas são o
++  // único jeito de saber se um valor sem pontuação tem centavos ou não.
++  const hasReaisWord = /reais/i.test(value);
++  const hasCentavosWord = /centavos/i.test(value);
++
+   // 1. Limpeza inicial de textos informativos do Mercado Livre
+   let sanitized = value
+     .replace(/antes:/gi, "")
+@@ -27,22 +36,35 @@
+ 
+   if (!sanitized) return null;
+ 
+-  // 2. Se o valor veio com vírgula ou ponto separando decimais (ex: 299,90)
+-  if (sanitized.includes(",") || sanitized.includes(".")) {
+-    if (sanitized.includes(",") && sanitized.includes(".")) {
+-      sanitized = sanitized.replace(/\./g, "").replace(",", ".");
+-    } else if (sanitized.includes(",")) {
+-      sanitized = sanitized.replace(",", ".");
+-    }
+-  } else {
+-    // 3. CASO DO PRINT: Se veio tudo colado sem separador (ex: "29990")
+-    // Como os centavos no Mercado Livre sempre têm 2 dígitos, inserimos o ponto antes deles
+-    if (sanitized.length > 2) {
+-      const integerPart = sanitized.slice(0, -2);
+-      const decimalPart = sanitized.slice(-2);
+-      sanitized = `${integerPart}.${decimalPart}`;
+-    }
++  if (sanitized.includes(",") && sanitized.includes(".")) {
++    // Ex: "1.999,00" - ponto é separador de milhar, vírgula é decimal
++    sanitized = sanitized.replace(/\./g, "").replace(",", ".");
++  } else if (sanitized.includes(",")) {
++    // Ex: "1999,00" - vírgula é decimal
++    sanitized = sanitized.replace(",", ".");
++  } else if (sanitized.includes(".")) {
++    // Ex: "1.999" - o ponto pode ser separador de milhar ("1.999" = 1999)
++    // ou decimal ("19.90" = 19,90). Mesma lógica do normalizePrice.ts: só
++    // remove o ponto quando ele é claramente separador de milhar (seguido
++    // de exatamente 3 dígitos e nada de decimal depois).
++    sanitized = sanitized.replace(/\.(?=\d{3}(?:\D|$))/g, "");
++  } else if (hasCentavosWord && sanitized.length > 2) {
++    // Ex: "1999 reais e 90 centavos" -> sanitizado vira "199990" - os 2
++    // últimos dígitos são os centavos mencionados explicitamente no texto.
++    const integerPart = sanitized.slice(0, -2);
++    const decimalPart = sanitized.slice(-2);
++    sanitized = `${integerPart}.${decimalPart}`;
++  } else if (!hasReaisWord && !hasCentavosWord && sanitized.length > 2) {
++    // CASO DO PRINT: dígitos totalmente colados, sem nenhuma palavra (nem
++    // "reais" nem "centavos") - ex: "29990". Como não há nenhuma pista de
++    // que seja um valor inteiro, assume-se o padrão de 2 casas decimais.
++    const integerPart = sanitized.slice(0, -2);
++    const decimalPart = sanitized.slice(-2);
++    sanitized = `${integerPart}.${decimalPart}`;
+   }
++  // Se chegou aqui sem cair em nenhum caso acima, é porque o texto dizia só
++  // "reais" (sem "centavos" e sem pontuação) - ex: "Antes: 1999 reais" - ou
++  // seja, um valor inteiro mesmo, sem centavos escondidos. Não mexe.
+ 
+   const parsed = Number.parseFloat(sanitized);
+   return Number.isFinite(parsed) ? parsed : null;
