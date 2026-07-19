@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,9 +15,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { CurrencyInput } from "./CurrencyInput";
+import { OfferCard } from "@/components/OfferCard";
 import type { Marketplace } from "@/lib/offers";
 import { fetchCategories } from "@/lib/offers.service";
 import { createOffer } from "@/lib/offers.admin.service";
+import { buildDraftOffer } from "@/lib/offers.draft";
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
@@ -102,6 +104,23 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
     defaultValues: emptyValues,
   });
 
+  // Observa os valores do formulário em tempo real (a cada tecla digitada)
+  // para alimentar o preview ao vivo, sem precisar de submit.
+  const liveValues = useWatch({ control: form.control });
+  const draftOffer = buildDraftOffer(
+    {
+      title: liveValues.title ?? "",
+      description: liveValues.description ?? "",
+      currentPrice: liveValues.currentPrice ?? 0,
+      oldPrice: liveValues.oldPrice ?? 0,
+      imageUrl: liveValues.imageUrl ?? "",
+      marketplace: liveValues.marketplace ?? "Amazon",
+      categoryId: liveValues.categoryId ?? "",
+      affiliateUrl: liveValues.affiliateUrl ?? "",
+    },
+    categoriesQuery.data ?? [],
+  );
+
   const handleImport = async () => {
     if (!importUrl.trim()) return;
     setImporting(true);
@@ -179,249 +198,263 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
   };
 
   return (
-    <div className="space-y-6">
-      {status ? (
-        <Alert variant={status.type === "success" ? "default" : "destructive"}>
-          <AlertTitle>{status.type === "success" ? "Sucesso" : "Erro"}</AlertTitle>
-          <AlertDescription>{status.message}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {categoriesQuery.isError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Erro ao carregar categorias</AlertTitle>
-          <AlertDescription>
-            {categoriesQuery.error instanceof Error
-              ? categoriesQuery.error.message
-              : "Erro desconhecido."}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="rounded-2xl border border-dashed border-border bg-secondary/40 p-5">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4" style={{ color: "var(--brand)" }} />
-          <h3 className="text-sm font-semibold text-primary">Importar oferta (BETA)</h3>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Cole a URL do produto para tentar preencher automaticamente. Todos os campos continuam
-          editáveis, e se a importação falhar você pode preencher manualmente abaixo.
-        </p>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={importUrl}
-            onChange={(e) => setImportUrl(e.target.value)}
-            placeholder="Cole a URL do produto"
-            className="flex-1"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleImport}
-            disabled={importing || !importUrl.trim()}
-          >
-            {importing ? "Importando..." : "Importar automaticamente"}
-          </Button>
-        </div>
-        {importMessage ? (
-          <Alert
-            variant={importMessage.type === "success" ? "default" : "destructive"}
-            className="mt-3"
-          >
-            <AlertTitle>
-              {importMessage.type === "success" ? "Importado" : "Não foi possível importar"}
-            </AlertTitle>
-            <AlertDescription>{importMessage.message}</AlertDescription>
+    <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
+      <div className="space-y-6">
+        {status ? (
+          <Alert variant={status.type === "success" ? "default" : "destructive"}>
+            <AlertTitle>{status.type === "success" ? "Sucesso" : "Erro"}</AlertTitle>
+            <AlertDescription>{status.message}</AlertDescription>
           </Alert>
         ) : null}
+
+        {categoriesQuery.isError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Erro ao carregar categorias</AlertTitle>
+            <AlertDescription>
+              {categoriesQuery.error instanceof Error
+                ? categoriesQuery.error.message
+                : "Erro desconhecido."}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        <div className="rounded-2xl border border-dashed border-border bg-secondary/40 p-5">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" style={{ color: "var(--brand)" }} />
+            <h3 className="text-sm font-semibold text-primary">Importar oferta (BETA)</h3>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Cole a URL do produto para tentar preencher automaticamente. Todos os campos continuam
+            editáveis, e se a importação falhar você pode preencher manualmente abaixo.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+              placeholder="Cole a URL do produto"
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleImport}
+              disabled={importing || !importUrl.trim()}
+            >
+              {importing ? "Importando..." : "Importar automaticamente"}
+            </Button>
+          </div>
+          {importMessage ? (
+            <Alert
+              variant={importMessage.type === "success" ? "default" : "destructive"}
+              className="mt-3"
+            >
+              <AlertTitle>
+                {importMessage.type === "success" ? "Importado" : "Não foi possível importar"}
+              </AlertTitle>
+              <AlertDescription>{importMessage.message}</AlertDescription>
+            </Alert>
+          ) : null}
+        </div>
+
+        <form id="offer-form" onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="title">Título</Label>
+              <Input id="title" {...form.register("title")} />
+              {form.formState.errors.title ? (
+                <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
+              ) : null}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="imageUrl">Imagem (URL)</Label>
+              <Input id="imageUrl" {...form.register("imageUrl")} />
+              {form.formState.errors.imageUrl ? (
+                <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="currentPrice">Preço Atual</Label>
+              <Controller
+                control={form.control}
+                name="currentPrice"
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="currentPrice"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
+                )}
+              />
+              {form.formState.errors.currentPrice ? (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.currentPrice.message}
+                </p>
+              ) : null}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="oldPrice">Preço Antigo</Label>
+              <Controller
+                control={form.control}
+                name="oldPrice"
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="oldPrice"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
+                )}
+              />
+              {form.formState.errors.oldPrice ? (
+                <p className="text-sm text-destructive">{form.formState.errors.oldPrice.message}</p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="marketplace">Marketplace</Label>
+              <Controller
+                control={form.control}
+                name="marketplace"
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um marketplace" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {marketplaceOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {form.formState.errors.marketplace ? (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.marketplace.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="categoryId">Categoria</Label>
+              <Controller
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={categoriesQuery.isPending}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          categoriesQuery.isPending
+                            ? "Carregando categorias..."
+                            : "Selecione uma categoria"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(categoriesQuery.data ?? []).map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {form.formState.errors.categoryId ? (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.categoryId.message}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="affiliateUrl">Link Afiliado</Label>
+            <Input id="affiliateUrl" {...form.register("affiliateUrl")} />
+            {form.formState.errors.affiliateUrl ? (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.affiliateUrl.message}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="description">Descrição</Label>
+            <Textarea id="description" rows={5} {...form.register("description")} />
+            {form.formState.errors.description ? (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.description.message}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Controller
+              control={form.control}
+              name="active"
+              render={({ field }) => (
+                <label className="flex items-center gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
+                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  <span className="text-sm font-medium">Ativo</span>
+                </label>
+              )}
+            />
+
+            <Controller
+              control={form.control}
+              name="featured"
+              render={({ field }) => (
+                <label className="flex items-center gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
+                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  <span className="text-sm font-medium">Destaque</span>
+                </label>
+              )}
+            />
+          </div>
+
+          <div className="pb-2">
+            <p className="text-sm text-muted-foreground">
+              Os dados serão enviados diretamente para a tabela{" "}
+              <span className="font-semibold">offers</span>.
+            </p>
+          </div>
+        </form>
       </div>
 
-      <form id="offer-form" onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="title">Título</Label>
-            <Input id="title" {...form.register("title")} />
-            {form.formState.errors.title ? (
-              <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
-            ) : null}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="imageUrl">Imagem (URL)</Label>
-            <Input id="imageUrl" {...form.register("imageUrl")} />
-            {form.formState.errors.imageUrl ? (
-              <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>
-            ) : null}
-          </div>
+      {/* Preview em tempo real - reaproveita o mesmo OfferCard da Home, sem
+          duplicar HTML/CSS. Os cliques ficam desativados (pointer-events-none)
+          porque aqui é só uma prévia visual, não uma oferta real navegável. */}
+      <div className="lg:sticky lg:top-6">
+        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+          Prévia
+        </p>
+        {/* Mesma classe de grid usada na Home e em /ofertas, para que o card
+            apareça exatamente como apareceria numa listagem real. */}
+        <div className="pointer-events-none grid select-none grid-cols-1 gap-5">
+          <OfferCard offer={draftOffer} />
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="currentPrice">Preço Atual</Label>
-            <Controller
-              control={form.control}
-              name="currentPrice"
-              render={({ field }) => (
-                <CurrencyInput
-                  id="currentPrice"
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                />
-              )}
-            />
-            {form.formState.errors.currentPrice ? (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.currentPrice.message}
-              </p>
-            ) : null}
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="oldPrice">Preço Antigo</Label>
-            <Controller
-              control={form.control}
-              name="oldPrice"
-              render={({ field }) => (
-                <CurrencyInput
-                  id="oldPrice"
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                />
-              )}
-            />
-            {form.formState.errors.oldPrice ? (
-              <p className="text-sm text-destructive">{form.formState.errors.oldPrice.message}</p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="marketplace">Marketplace</Label>
-            <Controller
-              control={form.control}
-              name="marketplace"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um marketplace" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {marketplaceOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {form.formState.errors.marketplace ? (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.marketplace.message}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="categoryId">Categoria</Label>
-            <Controller
-              control={form.control}
-              name="categoryId"
-              render={({ field }) => (
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                  disabled={categoriesQuery.isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        categoriesQuery.isPending
-                          ? "Carregando categorias..."
-                          : "Selecione uma categoria"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(categoriesQuery.data ?? []).map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {form.formState.errors.categoryId ? (
-              <p className="text-sm text-destructive">{form.formState.errors.categoryId.message}</p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="grid gap-2">
-          <Label htmlFor="affiliateUrl">Link Afiliado</Label>
-          <Input id="affiliateUrl" {...form.register("affiliateUrl")} />
-          {form.formState.errors.affiliateUrl ? (
-            <p className="text-sm text-destructive">{form.formState.errors.affiliateUrl.message}</p>
-          ) : null}
-        </div>
-
-        <div className="grid gap-2">
-          <Label htmlFor="description">Descrição</Label>
-          <Textarea id="description" rows={5} {...form.register("description")} />
-          {form.formState.errors.description ? (
-            <p className="text-sm text-destructive">{form.formState.errors.description.message}</p>
-          ) : null}
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Controller
-            control={form.control}
-            name="active"
-            render={({ field }) => (
-              <label className="flex items-center gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
-                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                <span className="text-sm font-medium">Ativo</span>
-              </label>
-            )}
-          />
-
-          <Controller
-            control={form.control}
-            name="featured"
-            render={({ field }) => (
-              <label className="flex items-center gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
-                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                <span className="text-sm font-medium">Destaque</span>
-              </label>
-            )}
-          />
-        </div>
-
-        <div className="flex flex-col gap-3 pb-20 sm:flex-row sm:items-center sm:justify-between sm:pb-0">
-          <p className="text-sm text-muted-foreground">
-            Os dados serão enviados diretamente para a tabela{" "}
-            <span className="font-semibold">offers</span>.
-          </p>
-          <Button
-            type="submit"
-            disabled={form.formState.isSubmitting}
-            className="hidden sm:inline-flex"
-          >
-            Salvar oferta
-          </Button>
-        </div>
-      </form>
-
-      {/* Botão fixo no rodapé, só no mobile - evita precisar rolar até o fim do formulário. */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-md sm:hidden">
+        {/* Botão único de salvar - fica logo abaixo da prévia, como última
+            etapa antes da publicação, tanto no mobile quanto no desktop. */}
         <Button
           type="submit"
           form="offer-form"
           disabled={form.formState.isSubmitting}
-          className="w-full !py-3.5 text-base"
+          className="mt-6 w-full !py-3.5 text-base"
         >
           Salvar oferta
         </Button>

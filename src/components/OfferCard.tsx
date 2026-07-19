@@ -1,5 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { Share2, Copy, ArrowRight, Check, Instagram } from "lucide-react";
+import {
+  Share2,
+  Copy,
+  ArrowRight,
+  Check,
+  Instagram,
+  MessageCircle,
+  Send,
+  Facebook,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { type OfferWithCategory, formatPrice, discount } from "@/lib/offers";
@@ -104,7 +113,7 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
                   rel="noreferrer"
                   className="cursor-pointer"
                 >
-                  WhatsApp
+                  <MessageCircle className="mr-2 h-3.5 w-3.5" /> WhatsApp
                 </a>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
@@ -114,7 +123,7 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
                   rel="noreferrer"
                   className="cursor-pointer"
                 >
-                  Telegram
+                  <Send className="mr-2 h-3.5 w-3.5" /> Telegram
                 </a>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
@@ -124,7 +133,7 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
                   rel="noreferrer"
                   className="cursor-pointer"
                 >
-                  Facebook
+                  <Facebook className="mr-2 h-3.5 w-3.5" /> Facebook
                 </a>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={shareInstagram} className="cursor-pointer">

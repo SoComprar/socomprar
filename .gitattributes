@@ -1,0 +1,5 @@
+# Força LF (não CRLF) para arquivos de texto, independente do sistema
+# operacional de quem estiver trabalhando no projeto. Resolve o problema do
+# ESLint/Prettier reclamando de "␍" em massa quando o Git no Windows converte
+# os arquivos para CRLF automaticamente (core.autocrlf).
+* text=auto eol=lf
