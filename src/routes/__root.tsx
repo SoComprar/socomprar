@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { getAbsoluteUrl } from "../lib/site";
 
 function NotFoundComponent() {
   return (
@@ -81,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Ofertas selecionadas todos os dias na Amazon, Mercado Livre, Magalu, Shopee e AliExpress. Economize tempo e dinheiro com o SóComprar.",
+          "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza.",
       },
       { name: "theme-color", content: "#0A2C6D" },
       { property: "og:site_name", content: "SóComprar" },
@@ -91,39 +92,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:description",
-        content: "A gente pesquisa as melhores ofertas para você economizar tempo e dinheiro.",
+        content:
+          "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: getAbsoluteUrl("/og-image.png") },
       { name: "twitter:card", content: "summary_large_image" },
       {
         name: "twitter:title",
         content: "SóComprar — Ofertas todos os dias na Amazon, Magalu e Shopee",
       },
       {
-        name: "description",
-        content:
-          "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza.",
-      },
-      {
-        property: "og:description",
-        content:
-          "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza.",
-      },
-      {
         name: "twitter:description",
         content:
           "As melhores promoções dos maiores marketplaces do Brasil, atualizadas diariamente. A gente pesquisa. Você economiza.",
       },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3aeee50e-cb91-4a8a-9ba1-e034e4381856/id-preview-7340cdfa--f5d9bf97-10c9-4cc2-a4d7-19011732cd08.lovable.app-1783212707648.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3aeee50e-cb91-4a8a-9ba1-e034e4381856/id-preview-7340cdfa--f5d9bf97-10c9-4cc2-a4d7-19011732cd08.lovable.app-1783212707648.png",
-      },
+      { name: "twitter:image", content: getAbsoluteUrl("/og-image.png") },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -144,7 +128,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>
