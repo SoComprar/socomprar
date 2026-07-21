@@ -15,9 +15,9 @@ export function Header() {
   const [open, setOpen] = useState(false);
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
+      <div className="mx-auto flex h-20 max-w-6xl items-center gap-4 px-4">
         <Link to="/" className="shrink-0">
-          <Logo />
+          <Logo iconClassName="h-14 w-14" />
         </Link>
 
         <nav className="ml-6 hidden items-center gap-1 md:flex">
@@ -26,7 +26,7 @@ export function Header() {
               key={n.to}
               to={n.to}
               activeOptions={{ exact: n.to === "/" }}
-              className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              className="rounded-full px-4 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-primary"
               activeProps={{ className: "text-primary bg-secondary" }}
             >
               {n.label}
@@ -37,10 +37,10 @@ export function Header() {
         <div className="ml-auto flex items-center gap-2">
           <Link
             to="/ofertas"
-            className="hidden h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary sm:grid"
+            className="hidden h-11 w-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary sm:grid"
             aria-label="Pesquisar ofertas"
           >
-            <Search className="h-4 w-4" />
+            <Search className="h-5 w-5" />
           </Link>
           {INSTAGRAM_URL ? (
             <a
@@ -48,28 +48,28 @@ export function Header() {
               target="_blank"
               rel="noreferrer"
               aria-label="Instagram"
-              className="hidden h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary sm:grid"
+              className="hidden h-11 w-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary sm:grid"
             >
-              <Instagram className="h-4 w-4" />
+              <Instagram className="h-5 w-5" />
             </a>
           ) : null}
           {WHATSAPP_CONTACT_LINK ? (
             <a
-              href={WHATSAPP_CONTACT_LINK}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-brand !px-4 !py-2 text-sm"
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">WhatsApp</span>
+               href={WHATSAPP_CONTACT_LINK}
+                target="_blank"
+               rel="noreferrer"
+               aria-label="WhatsApp"
+               className="hidden h-11 w-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary sm:grid"
+             >
+              <MessageCircle className="h-5 w-5" />
             </a>
           ) : null}
           <button
             onClick={() => setOpen((v) => !v)}
-            className="ml-1 grid h-10 w-10 place-items-center rounded-full border border-border md:hidden"
+            className="ml-1 grid h-11 w-11 place-items-center rounded-full border border-border md:hidden"
             aria-label="Abrir menu"
           >
-            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </div>
