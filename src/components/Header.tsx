@@ -55,12 +55,12 @@ export function Header() {
           ) : null}
           {WHATSAPP_CONTACT_LINK ? (
             <a
-               href={WHATSAPP_CONTACT_LINK}
-                target="_blank"
-               rel="noreferrer"
-               aria-label="WhatsApp"
-               className="hidden h-11 w-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary sm:grid"
-             >
+              href={WHATSAPP_CONTACT_LINK}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="WhatsApp"
+              className="grid h-11 w-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary"
+            >
               <MessageCircle className="h-5 w-5" />
             </a>
           ) : null}

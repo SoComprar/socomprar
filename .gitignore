@@ -35,3 +35,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Patches locais (arquivos de trabalho, nunca devem ser commitados)
+*.patch
