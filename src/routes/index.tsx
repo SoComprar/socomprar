@@ -100,7 +100,7 @@ function Index() {
           style={{ background: "color-mix(in oklab, var(--primary) 25%, transparent)" }}
         />
 
-        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 md:grid-cols-2 md:py-20">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 pt-14 pb-8 md:grid-cols-2 md:pt-20 md:pb-10">
           <div>
             <span className="chip !bg-brand-soft" style={{ color: "var(--brand)" }}>
               <Tag className="h-3.5 w-3.5" /> Ofertas atualizadas diariamente
@@ -121,9 +121,9 @@ function Index() {
                   href={WHATSAPP_CONTACT_LINK}
                   target="_blank"
                   rel="noreferrer"
-                  className="btn-outline-brand"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5"
                 >
-                  <MessageCircle className="h-4 w-4" /> Entrar no WhatsApp
+                  <MessageCircle className="h-4 w-4" /> Grupo de Ofertas
                 </a>
               ) : null}
             </div>
@@ -154,23 +154,9 @@ function Index() {
             />
           </div>
         </div>
-
-        <div className="border-y border-border bg-secondary/40">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-4 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:text-sm">
-            <span>Amazon</span>
-            <span className="opacity-40">•</span>
-            <span>Mercado Livre</span>
-            <span className="opacity-40">•</span>
-            <span>Magalu</span>
-            <span className="opacity-40">•</span>
-            <span>Shopee</span>
-            <span className="opacity-40">•</span>
-            <span>AliExpress</span>
-          </div>
-        </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-14">
+      <section className="mx-auto max-w-6xl px-4 pt-4 pb-14">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-extrabold text-primary sm:text-3xl">
