@@ -20,11 +20,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function OfferCard({ offer }: { offer: OfferWithCategory }) {
+export function OfferCard({
+  offer,
+  variant = "default",
+}: {
+  offer: OfferWithCategory;
+  variant?: "default" | "compact";
+}) {
   const [copied, setCopied] = useState(false);
   const pct = discount(offer.current_price, offer.old_price);
   const offerUrl = getAbsoluteUrl(`/oferta/${offer.slug}`);
   const shareLinks = getShareLinks(offerUrl, offer.title);
+  const isCompact = variant === "compact";
 
   const copy = async () => {
     try {
@@ -54,7 +61,9 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
       <Link
         to="/oferta/$slug"
         params={{ slug: offer.slug }}
-        className="relative block aspect-square overflow-hidden bg-white p-4"
+        className={`relative block aspect-square overflow-hidden bg-white ${
+          isCompact ? "p-2 lg:p-4" : "p-4"
+        }`}
       >
         <img
           src={offer.image_url}
@@ -62,28 +71,52 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
           loading="lazy"
           className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
         />
-        <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-xs font-bold text-brand-foreground shadow-mdZone z-10">
+        <span
+          className={`absolute left-3 top-3 rounded-full bg-brand font-bold text-brand-foreground shadow-mdZone z-10 ${
+            isCompact
+              ? "px-2 py-0.5 text-[10px] lg:px-2.5 lg:py-1 lg:text-xs"
+              : "px-2.5 py-1 text-xs"
+          }`}
+        >
           -{pct}%
         </span>
-        <span className="absolute right-3 top-3 rounded-full bg-background/95 px-2.5 py-1 text-[11px] font-semibold text-primary shadow-sm z-10">
+        <span
+          className={`absolute right-3 top-3 rounded-full bg-background/95 font-semibold text-primary shadow-sm z-10 ${
+            isCompact
+              ? "px-2 py-0.5 text-[9px] lg:px-2.5 lg:py-1 lg:text-[11px]"
+              : "px-2.5 py-1 text-[11px]"
+          }`}
+        >
           {offer.marketplace}
         </span>
       </Link>
 
-      <div className="flex flex-1 flex-col gap-3 p-4">
+      <div
+        className={`flex flex-1 flex-col ${
+          isCompact ? "gap-1.5 p-2.5 lg:gap-3 lg:p-4" : "gap-3 p-4"
+        }`}
+      >
         <Link
           to="/oferta/$slug"
           params={{ slug: offer.slug }}
-          className="line-clamp-2 min-h-[2.75rem] text-sm font-semibold text-foreground hover:text-primary"
+          className={`line-clamp-2 font-semibold text-foreground hover:text-primary ${
+            isCompact
+              ? "min-h-[2.25rem] text-xs lg:min-h-[2.75rem] lg:text-sm"
+              : "min-h-[2.75rem] text-sm"
+          }`}
         >
           {offer.title}
         </Link>
 
         <div>
-          <div className="text-xs text-muted-foreground line-through">
+          <div
+            className={`text-muted-foreground line-through ${isCompact ? "text-[10px] lg:text-xs" : "text-xs"}`}
+          >
             {formatPrice(offer.old_price)}
           </div>
-          <div className="text-xl font-extrabold text-primary">
+          <div
+            className={`font-extrabold text-primary ${isCompact ? "text-base lg:text-xl" : "text-xl"}`}
+          >
             {formatPrice(offer.current_price)}
           </div>
         </div>
@@ -92,17 +125,22 @@ export function OfferCard({ offer }: { offer: OfferWithCategory }) {
           <Link
             to="/oferta/$slug"
             params={{ slug: offer.slug }}
-            className="btn-brand flex-1 !py-2.5 text-sm"
+            className={`btn-brand flex-1 ${
+              isCompact ? "!py-2 text-xs lg:!py-2.5 lg:text-sm" : "!py-2.5 text-sm"
+            }`}
           >
-            Comprar <ArrowRight className="h-3.5 w-3.5" />
+            Comprar{" "}
+            <ArrowRight className={isCompact ? "h-3 w-3 lg:h-3.5 lg:w-3.5" : "h-3.5 w-3.5"} />
           </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 aria-label="Compartilhar"
-                className="grid h-10 w-10 place-items-center rounded-full border border-border text-muted-foreground hover:text-primary"
+                className={`grid place-items-center rounded-full border border-border text-muted-foreground hover:text-primary ${
+                  isCompact ? "h-8 w-8 lg:h-10 lg:w-10" : "h-10 w-10"
+                }`}
               >
-                <Share2 className="h-4 w-4" />
+                <Share2 className={isCompact ? "h-3.5 w-3.5 lg:h-4 lg:w-4" : "h-4 w-4"} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
