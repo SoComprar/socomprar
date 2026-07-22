@@ -6,7 +6,7 @@ const importService = new ImportService();
 const USABLE_STATUSES = new Set(["SUCCESS", "PARTIAL"]);
 
 // Cole a sua chave do ScraperAPI aqui dentro das aspas
-const SCRAPER_API_KEY = "c291ff31b636c3439b3418aeec9de42b";
+const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY || "";
 
 export const Route = createFileRoute("/api/import-offer")({
   server: {
