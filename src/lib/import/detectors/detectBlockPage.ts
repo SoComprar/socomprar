@@ -5,6 +5,15 @@ import { MARKETPLACE_HOSTNAME_RULES } from "../utils/marketplace";
 // de marketplace já cadastrados em utils/marketplace.ts.
 const GENERIC_SITE_NAMES = MARKETPLACE_HOSTNAME_RULES.map((rule) => rule.marketplace.toLowerCase());
 
+// Variações internacionais/genéricas que não aparecem em MARKETPLACE_HOSTNAME_RULES
+// (que só lista o nome usado no Brasil), mas que também indicam que a página
+// devolvida não é a página real do produto - ex: quando o servidor de origem
+// da requisição é identificado como estando fora do Brasil e o site devolve
+// a versão internacional genérica em vez da página do produto solicitado.
+const GENERIC_SITE_NAME_VARIANTS = ["mercado libre"];
+
+const ALL_GENERIC_NAMES = [...GENERIC_SITE_NAMES, ...GENERIC_SITE_NAME_VARIANTS];
+
 const BLOCK_PAGE_PHRASES = [
   "captcha",
   "verifique que você não é um robô",
@@ -31,10 +40,15 @@ export function detectBlockPage(html: string): boolean {
   const title = titleMatch?.[1]?.trim().toLowerCase();
 
   // Página real de produto quase nunca tem como <title> só o nome do site.
-  // Página de bloqueio, com frequência, tem exatamente isso.
+  // Página de bloqueio (ou a versão internacional genérica devolvida quando
+  // a origem da requisição não é reconhecida como brasileira), com
+  // frequência, tem exatamente isso - ou o nome do site em algum lugar bem
+  // no início do título, sem nenhuma informação do produto.
   if (
     title &&
-    GENERIC_SITE_NAMES.some((name) => title === name || title.startsWith(`${name}.com`))
+    ALL_GENERIC_NAMES.some(
+      (name) => title === name || title.startsWith(`${name}.com`) || title.startsWith(`${name} `),
+    )
   ) {
     return true;
   }
