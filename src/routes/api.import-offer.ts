@@ -5,7 +5,7 @@ import { ImportService } from "@/lib/import";
 const importService = new ImportService();
 const USABLE_STATUSES = new Set(["SUCCESS", "PARTIAL"]);
 
-// Use a sua chave do ScraperAPI aqui dentro das aspas
+// Cole a sua chave do ScraperAPI aqui dentro das aspas
 const SCRAPER_API_KEY = "c291ff31b636c3439b3418aeec9de42b";
 
 export const Route = createFileRoute("/api/import-offer")({
@@ -27,8 +27,9 @@ export const Route = createFileRoute("/api/import-offer")({
           targetUrl.includes("mercadolivre.com.br") || 
           targetUrl.includes("shopee.com.br")
         ) {
-          // ATENÇÃO: Adicionado '&render=true' no final para simular uma pessoa real abrindo o navegador e quebrar o captcha!
-          urlProcessada = `http://scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(targetUrl)}&render=true`;
+          // AJUSTE MÁXIMO: Adicionado premium e keep_headers para derreter qualquer sistema avançado de anti-robô
+          urlProcessada = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(targetUrl)}&render=true&premium=true&keep_headers=true`;
+
         }
 
         const data = await importService.importOffer(urlProcessada);
