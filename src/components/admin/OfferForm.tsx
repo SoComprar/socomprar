@@ -20,7 +20,7 @@ import type { Marketplace } from "@/lib/offers";
 import { fetchCategories } from "@/lib/offers.service";
 import { createOffer } from "@/lib/offers.admin.service";
 import { buildDraftOffer } from "@/lib/offers.draft";
-import { Sparkles } from "lucide-react";
+import { Sparkles, BrainCircuit } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 
@@ -83,11 +83,11 @@ type ImportOfferResponse =
       };
     }
   | { ok: false; error: string };
-
 export function OfferForm({ onSuccess }: OfferFormProps) {
   const [status, setStatus] = useState<null | { type: "success" | "error"; message: string }>(null);
   const [importUrl, setImportUrl] = useState("");
   const [importing, setImporting] = useState(false);
+  const [geminiJsonInput, setGeminiJsonInput] = useState("");
   const [importMessage, setImportMessage] = useState<null | {
     type: "success" | "error";
     message: string;
@@ -104,8 +104,6 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
     defaultValues: emptyValues,
   });
 
-  // Observa os valores do formulário em tempo real (a cada tecla digitada)
-  // para alimentar o preview ao vivo, sem precisar de submit.
   const liveValues = useWatch({ control: form.control });
   const draftOffer = buildDraftOffer(
     {
@@ -120,6 +118,61 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
     },
     categoriesQuery.data ?? [],
   );
+
+  // FUNÇÃO AJUSTADA COM INTERCEPTOR DIRETO DE IMAGEURL E INPUT SEM DECIMAIS
+  const handleImportFromGemini = () => {
+    if (!geminiJsonInput.trim()) return;
+    setImportMessage(null);
+
+    try {
+      const parsed = JSON.parse(geminiJsonInput.trim());
+      const data = parsed.dados_extraidos || parsed;
+
+      const opts = { shouldValidate: true, shouldDirty: true, shouldTouch: true };
+
+      if (data.titulo || data.title) {
+        form.setValue("title", data.titulo || data.title, opts);
+      }
+      if (data.description || data.descricao) {
+        form.setValue("description", data.description || data.descricao, opts);
+      }
+
+      // Correção da Imagem: Mapeia tanto "imagem" quanto "imageUrl" direto para o campo correto da tela
+      const linkDaFoto = data.imageUrl || data.imageUrl || data.imagem || data.image;
+      if (linkDaFoto) {
+        form.setValue("imageUrl", linkDaFoto, opts);
+      }
+
+      // Correção dos Preços: Lê o valor puro enviado de forma direta para o CurrencyInput processar
+      if (data.currentPrice || data.precoAtual) {
+        const pCurrent = String(data.currentPrice || data.precoAtual).replace(/[^\d.]/g, "");
+        const num = parseFloat(pCurrent);
+        if (!isNaN(num)) form.setValue("currentPrice", num, opts);
+      }
+      if (data.oldPrice || data.precoAntigo) {
+        const pOld = String(data.oldPrice || data.precoAntigo).replace(/[^\d.]/g, "");
+        const num = parseFloat(pOld);
+        if (!isNaN(num)) form.setValue("oldPrice", num, opts);
+      }
+
+      const mkt = data.marketplace;
+      if (mkt && marketplaceOptions.includes(mkt as Marketplace)) {
+        form.setValue("marketplace", mkt as Marketplace, opts);
+      }
+
+      setImportMessage({
+        type: "success",
+        message:
+          "Dados injetados com sucesso! Confira o resultado, defina a Categoria e salve a oferta.",
+      });
+      setGeminiJsonInput("");
+    } catch (e) {
+      setImportMessage({
+        type: "error",
+        message: "Falha ao ler o código. Copie o bloco de código JSON completo do Gemini.",
+      });
+    }
+  };
 
   const handleImport = async () => {
     if (!importUrl.trim()) return;
@@ -160,7 +213,7 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
       ].filter(Boolean).length;
       setImportMessage({
         type: "success",
-        message: `Importamos ${filledCount} campo(s) automaticamente. Confira e complete o que faltar (categoria, link afiliado e, se necessário, os preços) antes de salvar.`,
+        message: `Importamos ${filledCount} campo(s) automaticamente. Confira e complete antes de salvar.`,
       });
     } catch {
       setImportMessage({
@@ -176,7 +229,7 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
     setStatus(null);
 
     try {
-      await createOffer({
+      const payload = {
         title: values.title,
         description: values.description,
         currentPrice: values.currentPrice,
@@ -187,7 +240,8 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
         affiliateUrl: values.affiliateUrl,
         active: values.active,
         featured: values.featured,
-      });
+      };
+      await createOffer(payload);
       setStatus({ type: "success", message: "Oferta cadastrada com sucesso." });
       form.reset(emptyValues);
       onSuccess?.();
@@ -196,7 +250,6 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
       setStatus({ type: "error", message });
     }
   };
-
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
       <div className="space-y-6">
@@ -218,247 +271,256 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
           </Alert>
         ) : null}
 
-        <div className="rounded-2xl border border-dashed border-border bg-secondary/40 p-5">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4" style={{ color: "var(--brand)" }} />
-            <h3 className="text-sm font-semibold text-primary">Importar oferta (BETA)</h3>
+        {importMessage ? (
+          <Alert variant={importMessage.type === "success" ? "default" : "destructive"}>
+            <AlertTitle>{importMessage.type === "success" ? "Processado" : "Aviso"}</AlertTitle>
+            <AlertDescription>{importMessage.message}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <div className="rounded-2xl border border-dashed border-border bg-secondary/40 p-5 space-y-4">
+          <div className="p-3 bg-background border border-border rounded-xl">
+            <div className="flex items-center gap-2">
+              <BrainCircuit className="h-4 w-4 text-blue-500" />
+              <h4 className="text-xs font-bold text-primary uppercase tracking-wider">
+                Opção A: Preenchimento Rápido com Gemini
+              </h4>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Cole o bloco de código JSON completo gerado pelo Gemini na caixa abaixo e clique em
+              Importar.
+            </p>
+            <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
+              <Input
+                placeholder='Ex: { "titulo": "Bicicleta...", "precoAtual": "R$ 1.346,00" ... }'
+                value={geminiJsonInput}
+                onChange={(e) => setGeminiJsonInput(e.target.value)}
+                className="text-xs font-mono"
+              />
+              <Button
+                type="button"
+                onClick={handleImportFromGemini}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs h-9 px-4 shrink-0 rounded-lg cursor-pointer"
+              >
+                Importar Dados
+              </Button>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Cole a URL do produto para tentar preencher automaticamente. Todos os campos continuam
-            editáveis, e se a importação falhar você pode preencher manualmente abaixo.
-          </p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <Input
-              value={importUrl}
-              onChange={(e) => setImportUrl(e.target.value)}
-              placeholder="Cole a URL do produto"
-              className="flex-1"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleImport}
-              disabled={importing || !importUrl.trim()}
-            >
-              {importing ? "Importando..." : "Importar automaticamente"}
-            </Button>
+
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" style={{ color: "var(--brand)" }} />
+              <h3 className="text-sm font-semibold text-primary">
+                Opção B: Importar via Link Direto
+              </h3>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Cole a URL do produto para tentar buscar pelo servidor.
+            </p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <Input
+                placeholder="https://..."
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+              />
+              <Button type="button" onClick={handleImport} disabled={importing}>
+                {importing ? "Importando..." : "Buscar Link"}
+              </Button>
+            </div>
           </div>
-          {importMessage ? (
-            <Alert
-              variant={importMessage.type === "success" ? "default" : "destructive"}
-              className="mt-3"
-            >
-              <AlertTitle>
-                {importMessage.type === "success" ? "Importado" : "Não foi possível importar"}
-              </AlertTitle>
-              <AlertDescription>{importMessage.message}</AlertDescription>
-            </Alert>
-          ) : null}
         </div>
 
-        <form id="offer-form" onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="title">Título</Label>
-              <Input id="title" {...form.register("title")} />
-              {form.formState.errors.title ? (
-                <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="imageUrl">Imagem (URL)</Label>
-              <Input id="imageUrl" {...form.register("imageUrl")} />
-              {form.formState.errors.imageUrl ? (
-                <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>
-              ) : null}
-            </div>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Título do Produto</Label>
+            <Input
+              id="title"
+              {...form.register("title")}
+              placeholder="Ex: Bicicleta Spinning 13kg WCT Fitness"
+            />
+            {form.formState.errors.title && (
+              <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>
+            )}
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="currentPrice">Preço Atual</Label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Preço Atual (R$)</Label>
               <Controller
-                control={form.control}
                 name="currentPrice"
+                control={form.control}
                 render={({ field }) => (
-                  <CurrencyInput
-                    id="currentPrice"
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                  />
+                  <CurrencyInput value={field.value} onChange={field.onChange} />
                 )}
               />
-              {form.formState.errors.currentPrice ? (
-                <p className="text-sm text-destructive">
+              {form.formState.errors.currentPrice && (
+                <p className="text-xs text-destructive">
                   {form.formState.errors.currentPrice.message}
                 </p>
-              ) : null}
+              )}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="oldPrice">Preço Antigo</Label>
+
+            <div className="space-y-2">
+              <Label>Preço Antigo / Original (R$)</Label>
               <Controller
-                control={form.control}
                 name="oldPrice"
+                control={form.control}
                 render={({ field }) => (
-                  <CurrencyInput
-                    id="oldPrice"
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                  />
+                  <CurrencyInput value={field.value} onChange={field.onChange} />
                 )}
               />
-              {form.formState.errors.oldPrice ? (
-                <p className="text-sm text-destructive">{form.formState.errors.oldPrice.message}</p>
-              ) : null}
+              {form.formState.errors.oldPrice && (
+                <p className="text-xs text-destructive">{form.formState.errors.oldPrice.message}</p>
+              )}
             </div>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="grid gap-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
               <Label htmlFor="marketplace">Marketplace</Label>
               <Controller
-                control={form.control}
                 name="marketplace"
+                control={form.control}
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um marketplace" />
+                    <SelectTrigger id="marketplace">
+                      <SelectValue placeholder="Selecione a loja" />
                     </SelectTrigger>
                     <SelectContent>
-                      {marketplaceOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
+                      {marketplaceOptions.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
               />
-              {form.formState.errors.marketplace ? (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.marketplace.message}
-                </p>
-              ) : null}
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="categoryId">Categoria</Label>
+            <div className="space-y-2">
+              <Label htmlFor="categoryId">Categoria no Site</Label>
               <Controller
-                control={form.control}
                 name="categoryId"
+                control={form.control}
                 render={({ field }) => (
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
                     disabled={categoriesQuery.isPending}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="categoryId">
                       <SelectValue
                         placeholder={
-                          categoriesQuery.isPending
-                            ? "Carregando categorias..."
-                            : "Selecione uma categoria"
+                          categoriesQuery.isPending ? "Carregando..." : "Selecione a categoria"
                         }
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {(categoriesQuery.data ?? []).map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
+                      {categoriesQuery.data?.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
               />
-              {form.formState.errors.categoryId ? (
-                <p className="text-sm text-destructive">
+              {form.formState.errors.categoryId && (
+                <p className="text-xs text-destructive">
                   {form.formState.errors.categoryId.message}
                 </p>
-              ) : null}
+              )}
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="affiliateUrl">Link Afiliado</Label>
-            <Input id="affiliateUrl" {...form.register("affiliateUrl")} />
-            {form.formState.errors.affiliateUrl ? (
-              <p className="text-sm text-destructive">
+          <div className="space-y-2">
+            <Label htmlFor="imageUrl">Link da Imagem (URL)</Label>
+            <Input id="imageUrl" {...form.register("imageUrl")} placeholder="https://..." />
+            {form.formState.errors.imageUrl && (
+              <p className="text-xs text-destructive">{form.formState.errors.imageUrl.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="affiliateUrl">Seu Link de Afiliado</Label>
+            <Input
+              id="affiliateUrl"
+              {...form.register("affiliateUrl")}
+              placeholder="https://amzn.to... ou https://shope.ee..."
+            />
+            {form.formState.errors.affiliateUrl && (
+              <p className="text-xs text-destructive">
                 {form.formState.errors.affiliateUrl.message}
               </p>
-            ) : null}
+            )}
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="description">Descrição</Label>
-            <Textarea id="description" rows={5} {...form.register("description")} />
-            {form.formState.errors.description ? (
-              <p className="text-sm text-destructive">
+          <div className="space-y-2">
+            <Label htmlFor="description">Descrição Extraída</Label>
+            <Textarea
+              id="description"
+              {...form.register("description")}
+              rows={4}
+              placeholder="Especificações do product..."
+            />
+            {form.formState.errors.description && (
+              <p className="text-xs text-destructive">
                 {form.formState.errors.description.message}
               </p>
-            ) : null}
+            )}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Controller
-              control={form.control}
-              name="active"
-              render={({ field }) => (
-                <label className="flex items-center gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
-                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                  <span className="text-sm font-medium">Ativo</span>
-                </label>
-              )}
-            />
-
-            <Controller
-              control={form.control}
-              name="featured"
-              render={({ field }) => (
-                <label className="flex items-center gap-3 rounded-2xl border border-border bg-secondary px-4 py-3">
-                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                  <span className="text-sm font-medium">Destaque</span>
-                </label>
-              )}
-            />
+          <div className="flex flex-wrap gap-4 py-2">
+            <div className="flex items-center space-x-2">
+              <Controller
+                name="active"
+                control={form.control}
+                render={({ field }) => (
+                  <Checkbox id="active" checked={field.value} onCheckedChange={field.onChange} />
+                )}
+              />
+              <label
+                htmlFor="active"
+                className="text-sm font-medium text-foreground cursor-pointer"
+              >
+                Oferta Ativa
+              </label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Controller
+                name="featured"
+                control={form.control}
+                render={({ field }) => (
+                  <Checkbox id="featured" checked={field.value} onCheckedChange={field.onChange} />
+                )}
+              />
+              <label
+                htmlFor="featured"
+                className="text-sm font-medium text-foreground cursor-pointer"
+              >
+                Destaque na Home
+              </label>
+            </div>
           </div>
 
-          <div className="pb-2">
-            <p className="text-sm text-muted-foreground">
-              Os dados serão enviados diretamente para a tabela{" "}
-              <span className="font-semibold">offers</span>.
-            </p>
-          </div>
+          <Button
+            type="submit"
+            className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl transition-all shadow-md cursor-pointer"
+          >
+            Salvar Oferta no Banco de Dados
+          </Button>
         </form>
       </div>
 
-      {/* Preview em tempo real - reaproveita o mesmo OfferCard da Home, sem
-          duplicar HTML/CSS. Os cliques ficam desativados (pointer-events-none)
-          porque aqui é só uma prévia visual, não uma oferta real navegável. */}
-      <div className="lg:sticky lg:top-6">
-        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-          Prévia
+      <aside className="sticky top-20 hidden space-y-4 lg:block">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Preview da Oferta no Site
         </p>
-        {/* Mesma classe de grid usada na Home e em /ofertas, para que o card
-            apareça exatamente como apareceria numa listagem real. */}
-        <div className="pointer-events-none grid select-none grid-cols-1 gap-5">
-          <OfferCard offer={draftOffer} />
+        <div className="w-[320px] rounded-2xl border border-border bg-card p-2 shadow-xs">
+          <OfferCard offer={draftOffer} variant="compact" />
         </div>
-
-        {/* Botão único de salvar - fica logo abaixo da prévia, como última
-            etapa antes da publicação, tanto no mobile quanto no desktop. */}
-        <Button
-          type="submit"
-          form="offer-form"
-          disabled={form.formState.isSubmitting}
-          className="mt-6 w-full !py-3.5 text-base"
-        >
-          Salvar oferta
-        </Button>
-      </div>
+      </aside>
     </div>
   );
 }
