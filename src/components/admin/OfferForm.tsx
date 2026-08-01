@@ -160,6 +160,19 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
         form.setValue("marketplace", mkt as Marketplace, opts);
       }
 
+      // Link de afiliado: aceita qualquer um dos nomes que os
+      // bookmarklets podem mandar.
+      const linkAfiliado =
+        data.linkAfiliado ||
+        data.link_afiliado ||
+        data.seuLinkDeAfiliado ||
+        data.affiliateLink ||
+        data.link ||
+        data.url;
+      if (linkAfiliado) {
+        form.setValue("affiliateUrl", linkAfiliado, opts);
+      }
+
       setImportMessage({
         type: "success",
         message:
