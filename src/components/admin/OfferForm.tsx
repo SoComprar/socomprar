@@ -21,7 +21,7 @@ import { fetchCategories } from "@/lib/offers.service";
 import { createOffer } from "@/lib/offers.admin.service";
 import { buildDraftOffer } from "@/lib/offers.draft";
 import { Sparkles, BrainCircuit } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 
 const offerSchema = z
@@ -67,6 +67,10 @@ const emptyValues: OfferFormValues = {
 
 type OfferFormProps = {
   onSuccess?: () => void;
+  // Usado para "Duplicar oferta": quando um valor for passado aqui,
+  // o formulário é preenchido automaticamente com esses dados.
+  prefill?: Partial<OfferFormValues> | null;
+  onPrefillConsumed?: () => void;
 };
 
 type ImportOfferResponse =
@@ -83,7 +87,7 @@ type ImportOfferResponse =
       };
     }
   | { ok: false; error: string };
-export function OfferForm({ onSuccess }: OfferFormProps) {
+export function OfferForm({ onSuccess, prefill, onPrefillConsumed }: OfferFormProps) {
   const [status, setStatus] = useState<null | { type: "success" | "error"; message: string }>(null);
   const [importUrl, setImportUrl] = useState("");
   const [importing, setImporting] = useState(false);
@@ -103,6 +107,15 @@ export function OfferForm({ onSuccess }: OfferFormProps) {
     resolver: zodResolver(offerSchema),
     defaultValues: emptyValues,
   });
+
+  // Duplicar oferta: quando o painel manda um "prefill", preenche o
+  // formulário com esses dados (sobrescrevendo o que estiver vazio).
+  useEffect(() => {
+    if (!prefill) return;
+    form.reset({ ...emptyValues, ...prefill });
+    setStatus(null);
+    onPrefillConsumed?.();
+  }, [prefill]);
 
   const liveValues = useWatch({ control: form.control });
   const draftOffer = buildDraftOffer(

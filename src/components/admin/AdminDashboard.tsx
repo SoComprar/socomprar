@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { ShieldCheck, Trash2, LogOut } from "lucide-react";
+import { ShieldCheck, Trash2, LogOut, Copy } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,13 +14,16 @@ import {
 } from "@/components/ui/table";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { formatPrice } from "@/lib/offers";
+import type { OfferWithCategory } from "@/lib/offers";
 import { OfferForm } from "./OfferForm";
 import { deleteOffer, fetchOffersForAdmin } from "@/lib/offers.admin.service";
+import type { OfferInput } from "@/lib/offers.admin.service";
 import { signOut } from "@/lib/auth";
 
 export function AdminDashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [duplicateSeed, setDuplicateSeed] = useState<Partial<OfferInput> | null>(null);
   const offersQuery = useQuery({
     queryKey: ["adminOffers"],
     queryFn: fetchOffersForAdmin,
@@ -38,6 +42,24 @@ export function AdminDashboard() {
     const confirmation = window.confirm("Tem certeza de que deseja apagar esta oferta?");
     if (!confirmation) return;
     deleteMutation.mutate(id);
+  };
+
+  const handleDuplicate = (offer: OfferWithCategory) => {
+    setDuplicateSeed({
+      title: `${offer.title} (cópia)`,
+      description: offer.description ?? "",
+      currentPrice: offer.current_price,
+      oldPrice: offer.old_price,
+      imageUrl: offer.image_url ?? "",
+      marketplace: offer.marketplace,
+      categoryId: offer.category_id ?? "",
+      // Deixado em branco de propósito: o link de afiliado quase sempre
+      // muda de um anúncio para outro, então força a revisão manual.
+      affiliateUrl: "",
+      active: false,
+      featured: false,
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleLogout = async () => {
@@ -67,7 +89,11 @@ export function AdminDashboard() {
       </header>
 
       <section className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-8">
-        <OfferForm onSuccess={handleOfferCreated} />
+        <OfferForm
+          onSuccess={handleOfferCreated}
+          prefill={duplicateSeed}
+          onPrefillConsumed={() => setDuplicateSeed(null)}
+        />
       </section>
 
       <section className="mt-10 rounded-3xl border border-border bg-card p-8 shadow-sm">
@@ -141,14 +167,24 @@ export function AdminDashboard() {
                     <TableCell>{offer.active ? "Sim" : "Não"}</TableCell>
                     <TableCell>{offer.featured ? "Sim" : "Não"}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(offer.id)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDuplicate(offer)}
+                          title="Duplicar oferta"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(offer.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
