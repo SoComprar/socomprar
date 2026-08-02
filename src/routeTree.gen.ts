@@ -22,6 +22,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as OfertaSlugRouteImport } from './routes/oferta.$slug'
 import { Route as ApiImportOfferRouteImport } from './routes/api.import-offer'
+import { Route as AdminPendentesRouteImport } from './routes/admin.pendentes'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 
 const TermosRoute = TermosRouteImport.update({
@@ -89,6 +90,11 @@ const ApiImportOfferRoute = ApiImportOfferRouteImport.update({
   path: '/api/import-offer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPendentesRoute = AdminPendentesRouteImport.update({
+  id: '/pendentes',
+  path: '/pendentes',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/pendentes': typeof AdminPendentesRoute
   '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
   '/admin/': typeof AdminIndexRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/pendentes': typeof AdminPendentesRoute
   '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
   '/admin': typeof AdminIndexRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/pendentes': typeof AdminPendentesRoute
   '/api/import-offer': typeof ApiImportOfferRoute
   '/oferta/$slug': typeof OfertaSlugRoute
   '/admin/': typeof AdminIndexRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/admin/login'
+    | '/admin/pendentes'
     | '/api/import-offer'
     | '/oferta/$slug'
     | '/admin/'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/admin/login'
+    | '/admin/pendentes'
     | '/api/import-offer'
     | '/oferta/$slug'
     | '/admin'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/admin/login'
+    | '/admin/pendentes'
     | '/api/import-offer'
     | '/oferta/$slug'
     | '/admin/'
@@ -301,6 +313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiImportOfferRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/pendentes': {
+      id: '/admin/pendentes'
+      path: '/pendentes'
+      fullPath: '/admin/pendentes'
+      preLoaderRoute: typeof AdminPendentesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/login': {
       id: '/admin/login'
       path: '/login'
@@ -313,11 +332,13 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminPendentesRoute: typeof AdminPendentesRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminLoginRoute: AdminLoginRoute,
+  AdminPendentesRoute: AdminPendentesRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 

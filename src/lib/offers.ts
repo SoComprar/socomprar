@@ -28,6 +28,9 @@ export type Offer = {
   featured: boolean;
   tags: string[] | null;
   created_at: string;
+  // Data/hora em que a oferta deve ficar visível automaticamente no site,
+  // enquanto active = false. Nulo = sem agendamento.
+  scheduled_at: string | null;
 };
 
 export type OfferWithCategory = Offer & {

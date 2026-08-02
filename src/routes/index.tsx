@@ -170,9 +170,14 @@ function Index() {
 
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7">
           {categories.map((c) => {
-            // Prioridade: 1) icon do BD, 2) mapa de categoria, 3) Package
+            // Prioridade: 1) icon do BD (se for um ícone reconhecido),
+            // 2) mapa de categoria, 3) Package.
+            // Importante: um ícone salvo no banco com um nome que não existe
+            // no iconMap acima (ex: erro de digitação, ou um ícone novo
+            // esquecido de cadastrar aqui) NÃO pode derrubar a Home inteira -
+            // por isso sempre validamos se o nome existe antes de usar.
             let iconKey = c.icon as keyof typeof iconMap | undefined;
-            if (!iconKey) {
+            if (!iconKey || !(iconKey in iconMap)) {
               const categoryKey = c.slug.toLowerCase().replace(/-/g, "");
               iconKey = categoryIconMap[categoryKey] || "Package";
             }

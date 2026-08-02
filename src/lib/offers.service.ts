@@ -12,9 +12,29 @@ function ensureSupabase() {
   return supabase;
 }
 
+// "Destrava" ofertas que foram agendadas (active = false + scheduled_at no
+// passado) tornando-as ativas. Roda antes de qualquer leitura pública, então
+// a publicação acontece sozinha assim que alguém visita o site — sem
+// precisar de nenhuma tarefa programada rodando no servidor.
+//
+// Erros aqui não devem derrubar a página: na pior das hipóteses a oferta
+// aparece publicada só na próxima visita, em vez de nesta.
+async function publishDueOffers() {
+  const client = ensureSupabase();
+
+  await client
+    .from("offers")
+    .update({ active: true, scheduled_at: null })
+    .eq("active", false)
+    .not("scheduled_at", "is", null)
+    .lte("scheduled_at", new Date().toISOString());
+}
+
 // Todas as ofertas ATIVAS, para uso no site público (home, /ofertas, sitemap).
 export async function fetchOffers(): Promise<OfferWithCategory[]> {
   const client = ensureSupabase();
+
+  await publishDueOffers();
 
   const { data, error } = await client
     .from("offers")
@@ -32,6 +52,10 @@ export async function fetchOffers(): Promise<OfferWithCategory[]> {
 // Uma oferta específica pelo slug, para a página /oferta/$slug.
 export async function fetchOfferBySlug(slug: string): Promise<OfferWithCategory | null> {
   const client = ensureSupabase();
+
+  // Cobre o caso de alguém abrir o link direto da oferta (ex: campanha de
+  // WhatsApp) antes de qualquer visita à Home ter disparado a publicação.
+  await publishDueOffers();
 
   const { data, error } = await client
     .from("offers")

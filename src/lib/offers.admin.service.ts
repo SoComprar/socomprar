@@ -3,7 +3,7 @@ import { slugify } from "./offers";
 import type { Marketplace, OfferWithCategory } from "./offers";
 
 const ADMIN_OFFER_SELECT =
-  "id,slug,title,description,image_url,current_price,old_price,marketplace,category_id,affiliate_url,active,featured,tags,created_at,category:categories(id,name,slug,icon,active)";
+  "id,slug,title,description,image_url,current_price,old_price,marketplace,category_id,affiliate_url,active,featured,tags,created_at,scheduled_at,category:categories(id,name,slug,icon,active)";
 
 export type OfferInput = {
   title: string;
@@ -88,6 +88,71 @@ export async function deleteOffer(id: string) {
   const client = ensureSupabase();
 
   const { error } = await client.from("offers").delete().eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return true;
+}
+
+// Ofertas capturadas mas ainda não publicadas no site (active = false),
+// para a sub-página "Pendentes" do painel.
+export async function fetchPendingOffers(): Promise<OfferWithCategory[]> {
+  const client = ensureSupabase();
+
+  const { data, error } = await client
+    .from("offers")
+    .select(ADMIN_OFFER_SELECT)
+    .eq("active", false)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as unknown as OfferWithCategory[];
+}
+
+// Publica a oferta imediatamente (aparece no site na próxima leitura).
+export async function publishOfferNow(id: string) {
+  const client = ensureSupabase();
+
+  const { error } = await client
+    .from("offers")
+    .update({ active: true, scheduled_at: null })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return true;
+}
+
+// Agenda a oferta para ficar visível automaticamente numa data/hora futura.
+// A oferta continua com active = false até lá — quem publica de fato é a
+// checagem que roda nas leituras públicas (ver offers.service.ts).
+export async function scheduleOffer(id: string, scheduledAtIso: string) {
+  const client = ensureSupabase();
+
+  const { error } = await client
+    .from("offers")
+    .update({ active: false, scheduled_at: scheduledAtIso })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return true;
+}
+
+// Remove o agendamento, mantendo a oferta como pendente (sem data marcada).
+export async function cancelSchedule(id: string) {
+  const client = ensureSupabase();
+
+  const { error } = await client.from("offers").update({ scheduled_at: null }).eq("id", id);
 
   if (error) {
     throw new Error(error.message);

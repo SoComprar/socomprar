@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { ShieldCheck, Trash2, LogOut, Copy } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ShieldCheck, Trash2, LogOut, Copy, Clock } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -81,6 +81,12 @@ export function AdminDashboard() {
             <ShieldCheck className="h-3.5 w-3.5" />
             {isSupabaseConfigured ? "Supabase conectado" : "Supabase não configurado"}
           </div>
+          <Button variant="outline" size="sm" asChild className="gap-1.5">
+            <Link to="/admin/pendentes">
+              <Clock className="h-3.5 w-3.5" />
+              Pendentes
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1.5">
             <LogOut className="h-3.5 w-3.5" />
             Sair
