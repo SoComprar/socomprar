@@ -93,9 +93,11 @@ function OfertasPage() {
           ))}
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 columns-2 gap-4 sm:columns-none sm:grid sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
           {filtered.map((o) => (
-            <OfferCard key={o.id} offer={o} />
+            <div key={o.id} className="mb-4 break-inside-avoid sm:mb-0">
+              <OfferCard offer={o} />
+            </div>
           ))}
         </div>
 
