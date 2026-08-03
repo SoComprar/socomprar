@@ -209,18 +209,21 @@ function Index() {
               Selecionadas hoje para você economizar.
             </p>
           </div>
-          <Link
-            to="/ofertas"
-            className="hidden text-sm font-semibold text-primary hover:opacity-70 sm:inline-flex items-center gap-1"
-          >
-            Ver todas <ArrowRight className="h-4 w-4" />
-          </Link>
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
           {featured.map((o) => (
             <OfferCard key={o.id} offer={o} variant="compact" />
           ))}
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <Link
+            to="/ofertas"
+            className="btn-brand inline-flex w-full items-center justify-center gap-2 sm:w-auto"
+          >
+            Ver todas as ofertas <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 
