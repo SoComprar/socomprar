@@ -139,9 +139,11 @@ function OfferPage() {
                 alt={offer.title}
                 className="h-full w-full object-contain p-4"
               />
-              <span className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-sm font-bold text-brand-foreground shadow-md">
-                -{pct}%
-              </span>
+              {pct > 0 && (
+                <span className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-sm font-bold text-brand-foreground shadow-md">
+                  -{pct}%
+                </span>
+              )}
             </div>
           </div>
 
@@ -164,15 +166,19 @@ function OfferPage() {
             <h1 className="mt-4 text-2xl font-extrabold text-primary sm:text-3xl">{offer.title}</h1>
 
             <div className="mt-6 rounded-2xl border border-border bg-card p-5">
-              <div className="text-sm text-muted-foreground line-through">
-                {formatPrice(offer.old_price)}
-              </div>
+              {pct > 0 && (
+                <div className="text-sm text-muted-foreground line-through">
+                  {formatPrice(offer.old_price)}
+                </div>
+              )}
               <div className="text-4xl font-black text-primary">
                 {formatPrice(offer.current_price)}
               </div>
-              <div className="mt-1 text-sm font-semibold" style={{ color: "var(--brand)" }}>
-                Você economiza {formatPrice(offer.old_price - offer.current_price)} ({pct}%)
-              </div>
+              {pct > 0 && (
+                <div className="mt-1 text-sm font-semibold" style={{ color: "var(--brand)" }}>
+                  Você economiza {formatPrice(offer.old_price - offer.current_price)} ({pct}%)
+                </div>
+              )}
 
               <a
                 href={offer.affiliate_url}

@@ -29,7 +29,10 @@ const offerSchema = z
     title: z.string().min(1, "Título é obrigatório."),
     description: z.string().min(1, "Descrição é obrigatória."),
     currentPrice: z.number().positive("Preço atual deve ser maior que zero."),
-    oldPrice: z.number().positive("Preço antigo deve ser maior que zero."),
+    // Preço antigo é OPCIONAL: o marketplace nem sempre informa um "de/por".
+    // Regra do projeto: nunca inventar/calcular esse valor — se não vier
+    // oficialmente, o campo fica em 0 (equivalente a "sem preço antigo").
+    oldPrice: z.number().min(0, "Preço antigo não pode ser negativo."),
     imageUrl: z.string().url("Informe uma URL válida para a imagem."),
     marketplace: z.enum(["Amazon", "Mercado Livre", "Magalu", "Shopee", "AliExpress"]),
     categoryId: z.string().min(1, "Categoria é obrigatória."),
@@ -37,8 +40,8 @@ const offerSchema = z
     active: z.boolean(),
     featured: z.boolean(),
   })
-  .refine((data) => data.oldPrice >= data.currentPrice, {
-    message: "O preço antigo deve ser maior ou igual ao preço atual.",
+  .refine((data) => data.oldPrice === 0 || data.oldPrice >= data.currentPrice, {
+    message: "O preço antigo deve ser maior ou igual ao preço atual (ou deixe 0 se não houver).",
     path: ["oldPrice"],
   });
 
@@ -192,6 +195,9 @@ export function OfferForm({ onSuccess, prefill, onPrefillConsumed }: OfferFormPr
           "Dados injetados com sucesso! Confira o resultado, defina a Categoria e salve a oferta.",
       });
       setGeminiJsonInput("");
+      // Mostra na hora quais campos ainda precisam de atenção manual
+      // (ex: Categoria, ou afiliado se o bookmarklet não mandou).
+      void form.trigger();
     } catch (e) {
       setImportMessage({
         type: "error",
@@ -241,6 +247,7 @@ export function OfferForm({ onSuccess, prefill, onPrefillConsumed }: OfferFormPr
         type: "success",
         message: `Importamos ${filledCount} campo(s) automaticamente. Confira e complete antes de salvar.`,
       });
+      void form.trigger();
     } catch {
       setImportMessage({
         type: "error",
@@ -435,7 +442,14 @@ export function OfferForm({ onSuccess, prefill, onPrefillConsumed }: OfferFormPr
                     value={field.value}
                     disabled={categoriesQuery.isPending}
                   >
-                    <SelectTrigger id="categoryId">
+                    <SelectTrigger
+                      id="categoryId"
+                      className={
+                        form.formState.errors.categoryId
+                          ? "border-destructive focus-visible:ring-destructive"
+                          : undefined
+                      }
+                    >
                       <SelectValue
                         placeholder={
                           categoriesQuery.isPending ? "Carregando..." : "Selecione a categoria"
@@ -474,6 +488,11 @@ export function OfferForm({ onSuccess, prefill, onPrefillConsumed }: OfferFormPr
               id="affiliateUrl"
               {...form.register("affiliateUrl")}
               placeholder="https://amzn.to... ou https://shope.ee..."
+              className={
+                form.formState.errors.affiliateUrl
+                  ? "border-destructive focus-visible:ring-destructive"
+                  : undefined
+              }
             />
             {form.formState.errors.affiliateUrl && (
               <p className="text-xs text-destructive">

@@ -71,15 +71,17 @@ export function OfferCard({
           loading="lazy"
           className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
         />
-        <span
-          className={`absolute left-3 top-3 rounded-full bg-brand font-bold text-brand-foreground shadow-mdZone z-10 ${
-            isCompact
-              ? "px-2 py-0.5 text-[10px] lg:px-2.5 lg:py-1 lg:text-xs"
-              : "px-2.5 py-1 text-xs"
-          }`}
-        >
-          -{pct}%
-        </span>
+        {pct > 0 && (
+          <span
+            className={`absolute left-3 top-3 rounded-full bg-brand font-bold text-brand-foreground shadow-mdZone z-10 ${
+              isCompact
+                ? "px-2 py-0.5 text-[10px] lg:px-2.5 lg:py-1 lg:text-xs"
+                : "px-2.5 py-1 text-xs"
+            }`}
+          >
+            -{pct}%
+          </span>
+        )}
         <span
           className={`absolute right-3 top-3 rounded-full bg-background/95 font-semibold text-primary shadow-sm z-10 ${
             isCompact
@@ -109,11 +111,13 @@ export function OfferCard({
         </Link>
 
         <div>
-          <div
-            className={`text-muted-foreground line-through ${isCompact ? "text-[10px] lg:text-xs" : "text-xs"}`}
-          >
-            {formatPrice(offer.old_price)}
-          </div>
+          {pct > 0 && (
+            <div
+              className={`text-muted-foreground line-through ${isCompact ? "text-[10px] lg:text-xs" : "text-xs"}`}
+            >
+              {formatPrice(offer.old_price)}
+            </div>
+          )}
           <div
             className={`font-extrabold text-primary ${isCompact ? "text-base lg:text-xl" : "text-xl"}`}
           >
