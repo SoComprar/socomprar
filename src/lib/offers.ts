@@ -31,6 +31,10 @@ export type Offer = {
   // Data/hora em que a oferta deve ficar visível automaticamente no site,
   // enquanto active = false. Nulo = sem agendamento.
   scheduled_at: string | null;
+  // Última vez que o admin conferiu manualmente esta oferta (preço,
+  // imagem, se ainda existe no marketplace). Atualizado automaticamente
+  // toda vez que a oferta é salva pela edição no painel.
+  reviewed_at: string | null;
 };
 
 export type OfferWithCategory = Offer & {

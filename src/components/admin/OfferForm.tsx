@@ -18,7 +18,7 @@ import { CurrencyInput } from "./CurrencyInput";
 import { OfferCard } from "@/components/OfferCard";
 import type { Marketplace } from "@/lib/offers";
 import { fetchCategories } from "@/lib/offers.service";
-import { createOffer } from "@/lib/offers.admin.service";
+import { createOffer, updateOffer } from "@/lib/offers.admin.service";
 import { buildDraftOffer } from "@/lib/offers.draft";
 import { Sparkles, BrainCircuit } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -45,7 +45,7 @@ const offerSchema = z
     path: ["oldPrice"],
   });
 
-type OfferFormValues = z.infer<typeof offerSchema>;
+export type OfferFormValues = z.infer<typeof offerSchema>;
 
 const marketplaceOptions: Marketplace[] = [
   "Amazon",
@@ -71,9 +71,15 @@ const emptyValues: OfferFormValues = {
 type OfferFormProps = {
   onSuccess?: () => void;
   // Usado para "Duplicar oferta": quando um valor for passado aqui,
-  // o formulário é preenchido automaticamente com esses dados.
+  // o formulário é preenchido automaticamente com esses dados, mas ao
+  // salvar sempre CRIA uma oferta nova (nunca tem id associado).
   prefill?: Partial<OfferFormValues> | null;
   onPrefillConsumed?: () => void;
+  // Usado para "Editar oferta": diferente do prefill, carrega um id —
+  // ao salvar, ATUALIZA a oferta existente em vez de criar uma nova, e
+  // marca reviewed_at automaticamente (ver offers.admin.service.ts).
+  editing?: { id: string; values: Partial<OfferFormValues> } | null;
+  onEditingConsumed?: () => void;
 };
 
 type ImportOfferResponse =
@@ -90,8 +96,17 @@ type ImportOfferResponse =
       };
     }
   | { ok: false; error: string };
-export function OfferForm({ onSuccess, prefill, onPrefillConsumed }: OfferFormProps) {
+export function OfferForm({
+  onSuccess,
+  prefill,
+  onPrefillConsumed,
+  editing,
+  onEditingConsumed,
+}: OfferFormProps) {
   const [status, setStatus] = useState<null | { type: "success" | "error"; message: string }>(null);
+  // Quando preenchido, o formulário está em modo edição: salvar atualiza
+  // a oferta com este id em vez de criar uma nova.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [importUrl, setImportUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [geminiJsonInput, setGeminiJsonInput] = useState("");
@@ -119,6 +134,23 @@ export function OfferForm({ onSuccess, prefill, onPrefillConsumed }: OfferFormPr
     setStatus(null);
     onPrefillConsumed?.();
   }, [prefill]);
+
+  // Editar oferta: preenche o formulário com os dados da oferta clicada
+  // e guarda o id — diferente do "prefill" de duplicar, aqui o formulário
+  // sabe que precisa ATUALIZAR essa oferta ao salvar, não criar uma nova.
+  useEffect(() => {
+    if (!editing) return;
+    form.reset({ ...emptyValues, ...editing.values });
+    setEditingId(editing.id);
+    setStatus(null);
+    onEditingConsumed?.();
+  }, [editing]);
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    form.reset(emptyValues);
+    setStatus(null);
+  };
 
   const liveValues = useWatch({ control: form.control });
   const draftOffer = buildDraftOffer(
@@ -274,8 +306,14 @@ export function OfferForm({ onSuccess, prefill, onPrefillConsumed }: OfferFormPr
         active: values.active,
         featured: values.featured,
       };
-      await createOffer(payload);
-      setStatus({ type: "success", message: "Oferta cadastrada com sucesso." });
+      if (editingId) {
+        await updateOffer(editingId, payload);
+        setStatus({ type: "success", message: "Oferta atualizada — revisão registrada." });
+        setEditingId(null);
+      } else {
+        await createOffer(payload);
+        setStatus({ type: "success", message: "Oferta cadastrada com sucesso." });
+      }
       form.reset(emptyValues);
       onSuccess?.();
     } catch (error) {
@@ -286,6 +324,16 @@ export function OfferForm({ onSuccess, prefill, onPrefillConsumed }: OfferFormPr
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
       <div className="space-y-6">
+        {editingId ? (
+          <Alert>
+            <AlertTitle>Editando oferta existente</AlertTitle>
+            <AlertDescription>
+              Ao salvar, esta oferta será atualizada (não vai criar uma nova) e a revisão será
+              registrada automaticamente.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         {status ? (
           <Alert variant={status.type === "success" ? "default" : "destructive"}>
             <AlertTitle>{status.type === "success" ? "Sucesso" : "Erro"}</AlertTitle>
@@ -549,12 +597,24 @@ export function OfferForm({ onSuccess, prefill, onPrefillConsumed }: OfferFormPr
             </div>
           </div>
 
-          <Button
-            type="submit"
-            className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl transition-all shadow-md cursor-pointer"
-          >
-            Salvar Oferta no Banco de Dados
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl transition-all shadow-md cursor-pointer"
+            >
+              {editingId ? "Salvar Alterações" : "Salvar Oferta no Banco de Dados"}
+            </Button>
+            {editingId ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={cancelEditing}
+                className="shrink-0 py-3"
+              >
+                Cancelar
+              </Button>
+            ) : null}
+          </div>
         </form>
       </div>
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ShieldCheck, Trash2, LogOut, Copy, Clock } from "lucide-react";
+import { ShieldCheck, Trash2, LogOut, Copy, Clock, Pencil, ExternalLink } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,14 +16,30 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { formatPrice } from "@/lib/offers";
 import type { OfferWithCategory } from "@/lib/offers";
 import { OfferForm } from "./OfferForm";
+import type { OfferFormValues } from "./OfferForm";
 import { deleteOffer, fetchOffersForAdmin } from "@/lib/offers.admin.service";
 import type { OfferInput } from "@/lib/offers.admin.service";
 import { signOut } from "@/lib/auth";
+
+// Depois de quantos dias sem revisar, a bolinha amarela de aviso aparece.
+const REVIEW_REMINDER_DAYS = 3;
+
+function needsReview(offer: OfferWithCategory): boolean {
+  const reference = offer.reviewed_at ?? offer.created_at;
+  if (!reference) return false;
+  const diffMs = Date.now() - new Date(reference).getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays >= REVIEW_REMINDER_DAYS;
+}
 
 export function AdminDashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [duplicateSeed, setDuplicateSeed] = useState<Partial<OfferInput> | null>(null);
+  const [editingOffer, setEditingOffer] = useState<{
+    id: string;
+    values: Partial<OfferFormValues>;
+  } | null>(null);
   const offersQuery = useQuery({
     queryKey: ["adminOffers"],
     queryFn: fetchOffersForAdmin,
@@ -58,6 +74,25 @@ export function AdminDashboard() {
       affiliateUrl: "",
       active: false,
       featured: false,
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleEdit = (offer: OfferWithCategory) => {
+    setEditingOffer({
+      id: offer.id,
+      values: {
+        title: offer.title,
+        description: offer.description ?? "",
+        currentPrice: offer.current_price,
+        oldPrice: offer.old_price ?? 0,
+        imageUrl: offer.image_url ?? "",
+        marketplace: offer.marketplace,
+        categoryId: offer.category_id ?? "",
+        affiliateUrl: offer.affiliate_url,
+        active: offer.active,
+        featured: offer.featured,
+      },
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -99,6 +134,8 @@ export function AdminDashboard() {
           onSuccess={handleOfferCreated}
           prefill={duplicateSeed}
           onPrefillConsumed={() => setDuplicateSeed(null)}
+          editing={editingOffer}
+          onEditingConsumed={() => setEditingOffer(null)}
         />
       </section>
 
@@ -166,7 +203,17 @@ export function AdminDashboard() {
               ) : offersQuery.data?.length ? (
                 offersQuery.data.map((offer) => (
                   <TableRow key={offer.id}>
-                    <TableCell>{offer.title}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-2">
+                        {needsReview(offer) ? (
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full bg-yellow-400"
+                            title={`Sem revisão há ${REVIEW_REMINDER_DAYS}+ dias`}
+                          />
+                        ) : null}
+                        {offer.title}
+                      </span>
+                    </TableCell>
                     <TableCell>{offer.marketplace}</TableCell>
                     <TableCell>{offer.category?.name ?? "—"}</TableCell>
                     <TableCell>{formatPrice(offer.current_price)}</TableCell>
@@ -174,6 +221,24 @@ export function AdminDashboard() {
                     <TableCell>{offer.featured ? "Sim" : "Não"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          asChild
+                          title="Ver produto no marketplace (conferir se ainda existe / mudou)"
+                        >
+                          <a href={offer.affiliate_url} target="_blank" rel="noreferrer">
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(offer)}
+                          title="Editar oferta (marca como revisada ao salvar)"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"

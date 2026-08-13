@@ -3,7 +3,7 @@ import { slugify } from "./offers";
 import type { Marketplace, OfferWithCategory } from "./offers";
 
 const ADMIN_OFFER_SELECT =
-  "id,slug,title,description,image_url,current_price,old_price,marketplace,category_id,affiliate_url,active,featured,tags,created_at,scheduled_at,category:categories(id,name,slug,icon,active)";
+  "id,slug,title,description,image_url,current_price,old_price,marketplace,category_id,affiliate_url,active,featured,tags,created_at,scheduled_at,reviewed_at,category:categories(id,name,slug,icon,active)";
 
 export type OfferInput = {
   title: string;
@@ -71,11 +71,17 @@ export async function createOffer(input: OfferInput) {
   return true;
 }
 
-// Pronto para quando a edição de ofertas for adicionada ao painel.
+// Salva as alterações de uma oferta existente. Toda vez que uma edição é
+// salva, consideramos que o admin conferiu a oferta (preço, imagem, se
+// ainda existe no marketplace) — por isso `reviewed_at` é sempre atualizado
+// pra "agora" aqui, sem precisar de um botão separado de "marcar revisada".
 export async function updateOffer(id: string, input: OfferInput) {
   const client = ensureSupabase();
 
-  const { error } = await client.from("offers").update(toRow(input)).eq("id", id);
+  const { error } = await client
+    .from("offers")
+    .update({ ...toRow(input), reviewed_at: new Date().toISOString() })
+    .eq("id", id);
 
   if (error) {
     throw new Error(error.message);
