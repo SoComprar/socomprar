@@ -39,7 +39,6 @@ function toRow(input: OfferInput) {
     affiliate_url: input.affiliateUrl,
     active: input.active,
     featured: input.featured,
-    slug: input.slug?.trim() ? slugify(input.slug) : slugify(input.title),
   };
 }
 
@@ -59,10 +58,15 @@ export async function fetchOffersForAdmin(): Promise<OfferWithCategory[]> {
   return (data ?? []) as unknown as OfferWithCategory[];
 }
 
+// O slug (apelido único usado na URL da oferta, ex: /oferta/nome-do-produto)
+// só é calculado AQUI, na criação. Uma vez definido, nunca mais muda —
+// mesmo que o título seja editado depois — pra nunca quebrar um link já
+// compartilhado ou indexado no Google.
 export async function createOffer(input: OfferInput) {
   const client = ensureSupabase();
 
-  const { error } = await client.from("offers").insert([toRow(input)]);
+  const slug = input.slug?.trim() ? slugify(input.slug) : slugify(input.title);
+  const { error } = await client.from("offers").insert([{ ...toRow(input), slug }]);
 
   if (error) {
     throw new Error(error.message);
@@ -71,10 +75,12 @@ export async function createOffer(input: OfferInput) {
   return true;
 }
 
-// Salva as alterações de uma oferta existente. Toda vez que uma edição é
-// salva, consideramos que o admin conferiu a oferta (preço, imagem, se
-// ainda existe no marketplace) — por isso `reviewed_at` é sempre atualizado
-// pra "agora" aqui, sem precisar de um botão separado de "marcar revisada".
+// Salva as alterações de uma oferta existente. Propositalmente NÃO
+// recalcula o slug (ver comentário em createOffer) — só atualiza os
+// dados do produto. Toda vez que uma edição é salva, consideramos que o
+// admin conferiu a oferta (preço, imagem, se ainda existe no marketplace)
+// — por isso `reviewed_at` é sempre atualizado pra "agora" aqui, sem
+// precisar de um botão separado de "marcar revisada".
 export async function updateOffer(id: string, input: OfferInput) {
   const client = ensureSupabase();
 
